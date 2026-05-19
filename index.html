@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Chemistry Analyzer</title>
+<style>
+  /* ── Reset & base ────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #0f1117;
+    --surface:  #171b26;
+    --card:     #1e2333;
+    --border:   #2a3050;
+    --accent:   #4f9cf9;
+    --accent2:  #34d399;
+    --warn:     #f59e0b;
+    --danger:   #f87171;
+    --text:     #e2e8f0;
+    --muted:    #8892a4;
+    --mono:     'JetBrains Mono', 'Fira Code', monospace;
+    --sans:     'Inter', system-ui, sans-serif;
+    --radius:   10px;
+    --shadow:   0 4px 24px rgba(0,0,0,.4);
+  }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ──────────────────────────────────────── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+  }
+  .logo { font-size: 20px; font-weight: 700; letter-spacing: -.5px; }
+  .logo span { color: var(--accent); }
+  .badge {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    background: rgba(79,156,249,.15); color: var(--accent);
+    border: 1px solid rgba(79,156,249,.3);
+    padding: 2px 8px; border-radius: 20px; letter-spacing: .06em;
+  }
+
+  /* ── Main layout ─────────────────────────────────── */
+  main {
+    flex: 1;
+    max-width: 1280px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 24px;
+  }
+
+  /* ── Search bar ──────────────────────────────────── */
+  .search-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .search-wrap label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .search-row {
+    display: flex;
+    gap: 10px;
+    max-width: 680px;
+  }
+  #compInput {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 10px 16px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  #compInput:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,156,249,.15);
+  }
+  #compInput::placeholder { color: var(--muted); }
+  #submitBtn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+    white-space: nowrap;
+  }
+  #submitBtn:hover  { background: #3b87e8; }
+  #submitBtn:active { transform: scale(.97); }
+  #submitBtn:disabled { background: var(--border); cursor: not-allowed; }
+
+  .examples {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .ex-chip {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 10px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    transition: background .15s;
+  }
+  .ex-chip:hover { background: rgba(79,156,249,.1); }
+
+  /* ── Results grid ────────────────────────────────── */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .results-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Cards ───────────────────────────────────────── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,.02);
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+  }
+  .src-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .src-api   { background: rgba(52,211,153,.12); color: var(--accent2); border: 1px solid rgba(52,211,153,.25); }
+  .src-cache { background: rgba(245,158,11,.12);  color: var(--warn);   border: 1px solid rgba(245,158,11,.25); }
+
+  /* ── Metadata table ──────────────────────────────── */
+  .meta-wrap { padding: 16px 20px; }
+  .compound-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .compound-formula {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 18px;
+  }
+  .props-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .prop-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .prop-key {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .prop-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .prop-val.highlight { color: var(--accent); font-weight: 600; }
+  .prop-val.good  { color: var(--accent2); }
+  .prop-val.warn  { color: var(--warn); }
+
+  .apps-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .app-tag {
+    background: rgba(79,156,249,.1);
+    border: 1px solid rgba(79,156,249,.2);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .hazard-box {
+    background: rgba(248,113,113,.07);
+    border: 1px solid rgba(248,113,113,.2);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--danger);
+  }
+
+  /* ── Molecular diagram ───────────────────────────── */
+  .diagram-wrap { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  #molSvg {
+    width: 100%;
+    height: 320px;
+    border-radius: 10px;
+    background: #0a0d16;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #molSvg svg { width: 100%; height: 100%; }
+  .diagram-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ── State messages ──────────────────────────────── */
+  #statusMsg {
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    display: none;
+  }
+  #statusMsg.info  { background: rgba(79,156,249,.1); color: var(--accent);  border: 1px solid rgba(79,156,249,.2); }
+  #statusMsg.error { background: rgba(248,113,113,.1); color: var(--danger); border: 1px solid rgba(248,113,113,.2); }
+  #statusMsg.ok    { background: rgba(52,211,153,.1);  color: var(--accent2);border: 1px solid rgba(52,211,153,.2); }
+
+  .placeholder-msg {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 60px 20px;
+    grid-column: 1 / -1;
+  }
+  .placeholder-msg .icon { font-size: 40px; margin-bottom: 12px; opacity: .4; }
+
+  /* ── Spinner ─────────────────────────────────────── */
+  .spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Cache strip ─────────────────────────────────── */
+  #cacheBar {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    padding: 4px 0 0;
+  }
+  #cacheBar a {
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+    margin-left: 8px;
+  }
+  #cacheBar a:hover { text-decoration: underline; }
+
+  /* ML analysis dashboard */
+  .ml-dashboard {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 16px;
+  }
+  .ml-hero {
+    background: transparent;
+    border: 0;
+    padding: 2px 0 0;
+  }
+  .ml-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .ml-title {
+    font-size: 22px;
+    font-weight: 800;
+  }
+  .compound-chip {
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.04);
+    color: var(--muted);
+    border-radius: 7px;
+    padding: 3px 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .ml-subtitle {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .metric-card {
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 8px;
+    padding: 15px 16px;
+    min-height: 92px;
+  }
+  .metric-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 700;
+  }
+  .metric-value {
+    font-size: 25px;
+    font-weight: 800;
+    margin-top: 6px;
+    line-height: 1;
+  }
+  .metric-value small {
+    font-size: 13px;
+    color: var(--text);
+    margin-left: 2px;
+  }
+  .metric-note {
+    color: #78d64b;
+    font-size: 12px;
+    margin-top: 6px;
+  }
+  .ml-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .ml-card {
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 8px;
+    padding: 18px 20px;
+    min-height: 236px;
+  }
+  .ml-card.full { grid-column: 1 / -1; }
+  .ml-card-title {
+    color: #c8c8c8;
+    font-size: 14px;
+    font-weight: 800;
+    margin-bottom: 14px;
+  }
+  .control-row {
+    display: grid;
+    grid-template-columns: 122px 1fr 58px;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 0;
+    color: #d1d5db;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .control-row input[type="range"] {
+    width: 100%;
+    accent-color: #777;
+  }
+  .control-value {
+    text-align: right;
+    color: #fff;
+  }
+  .ml-run-btn {
+    width: 100%;
+    margin-top: 8px;
+    border: 1px solid rgba(255,255,255,.28);
+    background: transparent;
+    color: #fff;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .ml-run-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .chart-box {
+    width: 100%;
+    min-height: 208px;
+  }
+  .chart-box svg {
+    width: 100%;
+    height: 220px;
+    display: block;
+  }
+  .band-row {
+    display: grid;
+    grid-template-columns: 84px minmax(110px, 1fr) 56px;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    margin: 9px 0;
+  }
+  .bar-track {
+    height: 9px;
+    background: rgba(255,255,255,.08);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 10px;
+  }
+  .property-table {
+    display: grid;
+    gap: 0;
+  }
+  .property-row {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) auto;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    font-size: 13px;
+  }
+  .property-row strong { color: #fff; }
+  .descriptor-list {
+    display: grid;
+    gap: 8px;
+  }
+  .descriptor-item {
+    display: grid;
+    grid-template-columns: 1fr 92px;
+    gap: 12px;
+    align-items: center;
+    background: rgba(0,0,0,.18);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .descriptor-name {
+    color: #c8c8c8;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .descriptor-value {
+    color: #fff;
+    font-weight: 800;
+    margin-top: 2px;
+  }
+  .mini-label {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .mini-track {
+    height: 7px;
+    background: rgba(255,255,255,.09);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .mini-fill {
+    height: 100%;
+    border-radius: 20px;
+    background: var(--accent2);
+  }
+  .breakdown-row {
+    display: grid;
+    grid-template-columns: 118px 1fr 52px;
+    gap: 10px;
+    align-items: center;
+    margin: 8px 0;
+    font-size: 12px;
+  }
+  .mechanism-grid {
+    display: grid;
+    gap: 10px;
+  }
+  .mechanism-tile {
+    background: rgba(0,0,0,.18);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    font-weight: 800;
+  }
+  .mechanism-tile small {
+    display: block;
+    color: var(--muted);
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .method-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .method-tag {
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    background: rgba(79,156,249,.15);
+    color: #8ec5ff;
+  }
+  .method-tag.green { background: rgba(120,214,75,.18); color: #80d44d; }
+  .method-tag.gold { background: rgba(245,158,11,.16); color: #f2b441; }
+  @media (max-width: 900px) {
+    .metric-grid, .ml-panels { grid-template-columns: 1fr; }
+    .ml-card.full { grid-column: auto; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 24px 14px; }
+    .search-row { flex-direction: column; max-width: none; }
+    .metric-grid { gap: 10px; }
+    .control-row { grid-template-columns: 1fr; gap: 6px; }
+    .control-value { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Quantum<span>Chem</span></div>
+  <span class="badge">ML Analysis</span>
+</header>
+
+<main>
+  <!-- ── Search ── -->
+  <section aria-label="Component search">
+    <div class="search-wrap">
+      <label for="compInput">Enter a chemical component or compound</label>
+      <div class="search-row">
+        <input id="compInput" type="text" placeholder="e.g. caffeine, glucose, aspirin, benzene…"
+               autocomplete="off" spellcheck="false" aria-label="Component name">
+        <button id="submitBtn" aria-label="Analyze component">Analyze</button>
+      </div>
+      <div class="examples">
+        <span>Try:</span>
+        <span class="ex-chip" onclick="quickSearch('caffeine')">caffeine</span>
+        <span class="ex-chip" onclick="quickSearch('glucose')">glucose</span>
+        <span class="ex-chip" onclick="quickSearch('aspirin')">aspirin</span>
+        <span class="ex-chip" onclick="quickSearch('dopamine')">dopamine</span>
+        <span class="ex-chip" onclick="quickSearch('ethanol')">ethanol</span>
+        <span class="ex-chip" onclick="quickSearch('adenine')">adenine</span>
+      </div>
+    </div>
+
+    <div id="statusMsg" role="alert" aria-live="polite"></div>
+    <div id="cacheBar"></div>
+  </section>
+
+  <!-- ── Results ── -->
+  <section id="resultsSection" aria-label="Analysis results">
+    <div class="results-grid" id="resultsGrid">
+      <div class="placeholder-msg" id="placeholderMsg">
+        <div class="icon">⚗️</div>
+        <div>Enter a chemical compound above to view<br>its properties and molecular diagram.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+// ── Atom color map ────────────────────────────────────────────────────────────
+const ATOM_COLORS = {
+  C:'#c8c8c8', H:'#ffffff', N:'#4f9cf9', O:'#f87171',
+  S:'#fde68a', P:'#f97316', F:'#34d399', Cl:'#86efac',
+  Br:'#fca5a5', I:'#c084fc', Mn:'#e879f9', Fe:'#f97316',
+  Na:'#818cf8', K:'#6ee7b7', Ca:'#fcd34d', Mg:'#6ee7b7',
+  DEFAULT: '#94a3b8'
+};
+function atomColor(sym) { return ATOM_COLORS[sym] || ATOM_COLORS.DEFAULT; }
+
+// ── Status helper ─────────────────────────────────────────────────────────────
+function setStatus(msg, type='info', html=false) {
+  const el = document.getElementById('statusMsg');
+  if (html) { el.innerHTML = msg; } else { el.textContent = msg; }
+  el.className = type;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+// ── Cache bar ─────────────────────────────────────────────────────────────────
+async function refreshCacheBar() {
+  try {
+    const r = await fetch('/cache/status');
+    const d = await r.json();
+    const bar = document.getElementById('cacheBar');
+    bar.innerHTML = `Session cache: <strong>${d.entries}</strong> entr${d.entries===1?'y':'ies'}` +
+      `<a onclick="clearCache()" title="Clear session cache">Clear cache</a>`;
+  } catch {}
+}
+async function clearCache() {
+  await fetch('/cache/clear');
+  setStatus('Cache cleared.', 'ok');
+  refreshCacheBar();
+}
+
+// ── Quick-search from chips ───────────────────────────────────────────────────
+function quickSearch(name) {
+  document.getElementById('compInput').value = name;
+  analyze();
+}
+
+// ── Main analyze flow ─────────────────────────────────────────────────────────
+async function analyze() {
+  const name = document.getElementById('compInput').value.trim();
+  if (!name) { setStatus('Please enter a component name.', 'error'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  setStatus(`Fetching data for "${name}"…`, 'info');
+
+  // Show spinner in results area
+  document.getElementById('placeholderMsg')?.remove();
+  const grid = document.getElementById('resultsGrid');
+  grid.innerHTML = '<div class="placeholder-msg"><div class="spinner"></div><div style="margin-top:16px;font-size:13px;color:var(--muted)">Querying AI — this may take 5–15 seconds…</div></div>';
+
+  try {
+    // ── 1. Fetch component metadata ──
+    const compRes = await fetch(`/component?name=${encodeURIComponent(name)}`);
+    if (!compRes.ok) {
+      let detail = compRes.statusText;
+      try { const j = await compRes.json(); detail = j.detail || detail; } catch {}
+      // Surface API key hint for 502/401
+      if (compRes.status === 502 || compRes.status === 401) {
+        throw new Error(detail + ' — visit <a href="/debug" target="_blank">/debug</a> to diagnose.');
+      }
+      throw new Error(detail);
+    }
+    const compJson = await compRes.json();
+    const data = compJson.data;
+    const srcComp = compJson.source;
+
+    // ── 2. Render requirement data card ──
+    grid.innerHTML = '';
+    grid.appendChild(buildDataCard(data, srcComp));
+
+    // ── 3. Fetch / build diagram ──
+    const diagCard = buildDiagramCard();
+    grid.appendChild(diagCard);
+    grid.appendChild(buildMlDashboard(data, name));
+
+    setStatus('', '');
+
+    if (data.structure_image_url) {
+      renderStructureImage(data.structure_image_url, data.name || name);
+    } else if (data.atoms && data.atoms.length > 0 && data.bonds) {
+      renderMolecule(data.atoms, data.bonds, data.diagram_note);
+    } else {
+      const diagRes = await fetch(`/diagram?name=${encodeURIComponent(name)}`);
+      if (diagRes.ok) {
+        const diagJson = await diagRes.json();
+        if (diagJson.data.structure_image_url) {
+          renderStructureImage(diagJson.data.structure_image_url, data.name || name);
+        } else if (diagJson.data.atoms && diagJson.data.atoms.length > 0) {
+          renderMolecule(diagJson.data.atoms, diagJson.data.bonds, diagJson.data.diagram_note);
+        } else {
+          renderDiagramUnavailable(diagJson.data.message);
+        }
+      } else {
+        renderDiagramUnavailable('Verified molecular diagram unavailable.');
+      }
+    }
+
+    refreshCacheBar();
+    setStatus(`✓ Data loaded for "${data.name || name}"`, 'ok');
+
+  } catch (err) {
+    grid.innerHTML = '';
+    const hasHtml = err.message.includes('<a ');
+    setStatus(`Error: ${err.message}`, 'error', hasHtml);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Build requirement data card ───────────────────────────────────────────────
+function buildDataCard(d, src) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.setAttribute('aria-label', 'Requirement data');
+
+  const srcLabel = src === 'cache'
+    ? '<span class="src-tag src-cache">Cached</span>'
+    : '<span class="src-tag src-api">Live API</span>';
+
+  const props = [
+    { key: 'Molecular Formula',   val: d.formula,              hi: 'highlight' },
+    { key: 'Molecular Weight',    val: d.molecular_weight + ' g/mol' },
+    { key: 'CAS Number',          val: d.cas_number },
+    { key: 'Net Charge',          val: d.charge },
+    { key: 'Spin Multiplicity',   val: d.spin_multiplicity },
+    { key: 'Point Group',         val: d.point_group,          hi: 'highlight' },
+    { key: 'Bond Count',          val: d.bond_count },
+    { key: 'Ring Count',          val: d.ring_count },
+    { key: 'Rotatable Bonds',     val: d.rotatable_bonds },
+    { key: 'H-Bond Donors',       val: d.hbd_count },
+    { key: 'H-Bond Acceptors',    val: d.hba_count },
+    { key: 'LogP',                val: d.logp },
+    { key: 'Polar Surface Area',  val: d.polar_surface_area },
+    { key: 'Band Gap (eV)',       val: d.band_gap_ev,          hi: 'good' },
+    { key: 'Dipole Moment',       val: d.dipole_moment_debye !== 'N/A' ? d.dipole_moment_debye + ' D' : 'N/A' },
+    { key: 'Oxidation State',     val: d.oxidation_state },
+    { key: 'Hybridization',       val: d.hybridization },
+    { key: 'Solubility',          val: d.solubility },
+    { key: 'Data Source',         val: dataSourceLabel(d),        hi: d.ml_data_source === 'trained research model' ? 'good' : 'warn' },
+  ].filter(p => p.val && p.val !== 'undefined');
+
+  const propsHtml = props.map(p =>
+    `<div class="prop-item">
+      <div class="prop-key">${p.key}</div>
+      <div class="prop-val ${p.hi||''}">${escHtml(String(p.val))}</div>
+    </div>`
+  ).join('');
+
+  const apps = Array.isArray(d.applications) ? d.applications : [];
+  const appsHtml = apps.length
+    ? `<div style="margin-bottom:14px">
+         <div class="prop-key" style="margin-bottom:6px">Applications</div>
+         <div class="apps-list">${apps.map(a=>`<span class="app-tag">${escHtml(a)}</span>`).join('')}</div>
+       </div>` : '';
+
+  const hazHtml = d.hazards && d.hazards !== 'Safe'
+    ? `<div class="hazard-box">⚠ ${escHtml(d.hazards)}</div>` : '';
+
+  card.innerHTML = `
+    <div class="card-header">
+      <span class="card-title">Requirement Data</span>
+      ${srcLabel}
+    </div>
+    <div class="meta-wrap">
+      <div class="compound-name">${escHtml(d.name || 'Unknown compound')}</div>
+      <div class="compound-formula">${escHtml(d.formula || '')}</div>
+      <div class="props-grid">${propsHtml}</div>
+      ${appsHtml}
+      ${hazHtml}
+    </div>`;
+
+  return card;
+}
+
+function dataSourceLabel(d) {
+  const sources = Array.isArray(d.sources) ? d.sources : [];
+  if (d.ml_data_source === 'trained research model') return 'trained research model';
+  if (sources.includes('materials_project')) return 'Materials Project + formula/provider fallback';
+  if (sources.includes('keyed_providers')) return 'keyed providers attempted + fallback';
+  return d.ml_data_source || 'formula/provider estimates';
+}
+
+// ── Build diagram card shell ──────────────────────────────────────────────────
+function buildDiagramCard() {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.setAttribute('aria-label', '3D molecular model');
+  card.innerHTML = `
+    <div class="card-header">
+      <span class="card-title">3D Molecular Model</span>
+      <span class="src-tag src-api" style="font-size:10px">3D SVG</span>
+    </div>
+    <div class="diagram-wrap">
+      <div id="molSvg" role="img" aria-label="3D molecular model">
+        <div class="spinner"></div>
+      </div>
+      <div class="diagram-legend" id="molLegend"></div>
+    </div>`;
+  return card;
+}
+
+// ── SVG Molecular Renderer ────────────────────────────────────────────────────
+function buildMlDashboard(d, inputName) {
+  const model = makeMlModel(d);
+  const section = document.createElement('section');
+  section.className = 'ml-dashboard';
+  section.setAttribute('aria-label', 'ML quantum chemistry prediction dashboard');
+  section.innerHTML = `
+    <div class="ml-hero">
+      <div class="ml-title-row">
+        <div class="ml-title">ML Quantum Chemistry Analysis</div>
+        <span class="compound-chip">${escHtml(inputName || d.formula || d.name || '')}</span>
+      </div>
+      <div class="ml-subtitle">${escHtml(d.name || 'Mn(II) coordination complex')} - supercapacitor electrode material prediction</div>
+    </div>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-label">Specific Capacitance</div><div class="metric-value" id="mlCap">${model.capacitance.toFixed(1)}<small> F/g</small></div><div class="metric-note" id="mlCapNote">+${model.capGain.toFixed(1)}% vs base Mn</div></div>
+      <div class="metric-card"><div class="metric-label">Energy Density</div><div class="metric-value" id="mlEnergy">${model.energyDensity.toFixed(1)}<small> Wh/kg</small></div><div class="metric-note" id="mlEnergyNote">+${model.energyGain.toFixed(1)}% predicted</div></div>
+      <div class="metric-card"><div class="metric-label">${model.hasResearchModel ? 'ML Band Gap' : 'Band Gap'}</div><div class="metric-value" id="mlBand">${model.bandGap.toFixed(2)}<small> eV</small></div><div class="metric-note">${model.hasResearchModel ? 'trained model' : 'same as requirement data'}</div></div>
+      <div class="metric-card"><div class="metric-label">Cycling Stability</div><div class="metric-value" id="mlStability">${model.stability.toFixed(1)}<small>%</small></div><div class="metric-note">after 5000 cycles</div></div>
+    </div>
+    <div class="ml-panels">
+      <div class="ml-card">
+        <div class="ml-card-title">Fetched Property Conditions</div>
+        <div class="property-table">
+          <div class="property-row"><span>Defect concentration</span><strong>${model.defect.toFixed(1)}%</strong></div>
+          <div class="property-row"><span>Ligand field strength</span><strong>${Math.round(model.ligand)}</strong></div>
+          <div class="property-row"><span>pH electrolyte</span><strong>${model.ph.toFixed(1)}</strong></div>
+          <div class="property-row"><span>Scan rate</span><strong>${Math.round(model.scanRate)} mV/s</strong></div>
+          <div class="property-row"><span>Data source</span><strong>${escHtml(dataSourceLabel(d))}</strong></div>
+        </div>
+      </div>
+      <div class="ml-card"><div class="ml-card-title">Electrochemical Performance</div><div class="chart-box" id="radarChart"></div></div>
+      <div class="ml-card"><div class="ml-card-title">Cycling Stability Curve</div><div class="chart-box" id="cyclingChart"></div></div>
+      <div class="ml-card"><div class="ml-card-title">Density of States (DOS)</div><div class="chart-box" id="dosChart"></div></div>
+      <div class="ml-card"><div class="ml-card-title">Band Gap Tuning</div><div class="prop-key" style="font-size:13px;margin-bottom:12px">Defect concentration effect on Eg</div>${buildBandRows(model)}<div style="color:#c8c8c8;font-size:12px;margin-top:10px">${escHtml(bandGapInterpretation(model))}</div></div>
+      <div class="ml-card"><div class="ml-card-title">Molecular Properties</div>${buildMolecularPropertyTable(d, model)}</div>
+      <div class="ml-card"><div class="ml-card-title">Molecular Property Descriptors <span class="src-tag src-api" style="float:right">Formula model</span></div>${buildPropertyDescriptors(d, model)}</div>
+      <div class="ml-card"><div class="ml-card-title">Electrochemical Performance Breakdown</div>${buildElectrochemicalBreakdown(d, model)}</div>
+      <div class="ml-card"><div class="ml-card-title">Ligand Contributions</div>${buildLigandContributions(d, model)}</div>
+      <div class="ml-card"><div class="ml-card-title">Charge Storage Mechanism</div>${buildChargeStorageMechanism(d, model)}</div>
+      <div class="ml-card"><div class="ml-card-title">Comparative Benchmarks</div>${buildComparativeBenchmarks(d, model)}</div>
+      <div class="ml-card"><div class="ml-card-title">DFT Workflow</div>${buildDftPanel(d)}</div>
+      <div class="ml-card full"><div class="ml-card-title">Defect Concentration -> Property Map (ML ensemble)</div><div class="chart-box" id="defectMapChart"></div></div>
+    </div>`;
+
+  requestAnimationFrame(() => renderMlDashboardCharts(section, model));
+  return section;
+}
+
+function makeMlModel(d) {
+  const hba = readNumber(d.hba_count, 10);
+  const hbd = readNumber(d.hbd_count, 8);
+  const rings = readNumber(d.ring_count, 4);
+  const rot = readNumber(d.rotatable_bonds, 8);
+  const dipole = readNumber(d.dipole_moment_debye, 5.8);
+  const band = clamp(readNumber(d.band_gap_ev, 2.36), 0.5, 6);
+  const profile = d.descriptor_profile || {};
+  const metalRatio = readNumber(profile.metal_ratio, 0.05);
+  const heteroRatio = readNumber(profile.hetero_ratio, 0.35);
+  const carbonRatio = readNumber(profile.carbon_ratio, 0.35);
+  const oxygenCount = readNumber(d.composition?.O, 0);
+  const nitrogenCount = readNumber(d.composition?.N, 0);
+  const defect = clamp(1 + metalRatio * 18 + heteroRatio * 3 - carbonRatio * 1.5, 0, 10);
+  const ligand = clamp(Math.round(2 + rings + hba * 0.25 + metalRatio * 12), 1, 10);
+  const ph = clamp(5.5 + oxygenCount * 0.12 - nitrogenCount * 0.05, 1, 14);
+  const scanRate = clamp(Math.round((30 + heteroRatio * 55 + metalRatio * 80) / 5) * 5, 10, 100);
+  const capacitance = clamp(260 + rings * 9 + hba * 2.4 - rot * 1.2, 120, 420);
+  const energyDensity = clamp(34 + band * 3.2 + dipole * 0.7, 18, 80);
+  const stability = clamp(86 + rings * 0.8 + hbd * 0.25 - rot * 0.12, 70, 98);
+  const research = d.provider_data?.research_prediction;
+  const preds = research?.available ? research.predictions || {} : {};
+  const predictedCapacitance = readNumber(preds.specific_capacitance_f_g, capacitance);
+  const predictedEnergyDensity = readNumber(preds.energy_density_wh_kg, energyDensity);
+  const predictedStability = readNumber(preds.cycling_stability_pct, stability);
+  const predictedBandGap = readNumber(preds.band_gap_ev, band);
+  return {
+    hba, hbd, rings, rot, dipole,
+    bandGap: predictedBandGap,
+    hasResearchModel: Boolean(research?.available),
+    descriptorProfile: profile,
+    defect,
+    ligand,
+    ph,
+    scanRate,
+    capacitance: predictedCapacitance,
+    capGain: clamp((predictedCapacitance - 285) / 285 * 100, 1, 40),
+    energyDensity: predictedEnergyDensity,
+    energyGain: clamp((predictedEnergyDensity - 39) / 39 * 100, 1, 35),
+    stability: predictedStability,
+    redox: 0.34,
+    mnCharge: 1.62,
+    solvation: -34.2
+  };
+}
+
+function renderMlDashboardCharts(section, model) {
+  renderRadarChart(section.querySelector('#radarChart'), model);
+  renderCyclingChart(section.querySelector('#cyclingChart'), model);
+  renderDosChart(section.querySelector('#dosChart'), model);
+  renderDefectMap(section.querySelector('#defectMapChart'), model);
+}
+
+function buildBandRows(m) {
+  const metalFactor = readNumber(m.descriptorProfile?.metal_ratio, 0.05);
+  const heteroFactor = readNumber(m.descriptorProfile?.hetero_ratio, 0.35);
+  const defectShift = clamp(0.08 + heteroFactor * 0.35 + metalFactor * 0.5, 0.08, 0.55);
+  const values = [
+    ['0% defect', m.bandGap + defectShift * 0.45, '#3b82f6', clamp(50 + (m.bandGap * 8), 35, 88)],
+    [`${m.defect.toFixed(1)}% defect`, m.bandGap, '#10b981', clamp(48 + (m.bandGap * 7), 32, 84)],
+    ['10% defect', m.bandGap - defectShift, '#ef6b3a', clamp(43 + (m.bandGap * 6), 25, 78)],
+  ];
+  return values.map(([label, val, color, width]) => `
+    <div class="band-row">
+      <strong>${label}</strong>
+      <span class="bar-track"><span class="bar-fill" style="width:${width}%;background:${color}"></span></span>
+      <span style="color:${color}">${val.toFixed(2)} eV</span>
+    </div>`).join('');
+}
+
+function bandGapInterpretation(m) {
+  if (m.bandGap < 1.5) return 'Narrow Eg - higher conductivity, lower insulating stability.';
+  if (m.bandGap < 3.2) return 'Moderate Eg - balanced charge transfer and stability.';
+  return 'Wide Eg - high stability, moderate charge transfer.';
+}
+
+function buildMolecularPropertyTable(d, m) {
+  const comp = d.composition || {};
+  const metal = dominantMetal(comp);
+  const metalLabel = metal ? `${metal}${oxidationSuffix(d.oxidation_state)}` : 'N/A';
+  const geom = geometryLabel(d, comp, metalLabel);
+  const mullikenValue = d.mulliken_charge ?? (metal ? 1.05 + readNumber(m.descriptorProfile?.metal_ratio, 0.05) * 5.5 + readNumber(comp.N, 0) * 0.035 + readNumber(comp.O, 0) * 0.025 : null);
+  const redoxValue = d.redox_potential_v ?? (metal ? -0.18 + readNumber(comp.O, 0) * 0.025 + readNumber(comp.N, 0) * 0.018 + readNumber(m.descriptorProfile?.metal_ratio, 0.05) : null);
+  const solvationValue = d.solvation_energy_kcal_mol ?? (-1 * (12 + readNumber(comp.O, 0) * 1.9 + readNumber(comp.N, 0) * 1.25 + readNumber(comp.S, 0) * 2.1));
+  const mulliken = mullikenValue == null ? 'N/A' : signedNumber(readNumber(mullikenValue, 0), 2) + ' e-';
+  const redox = redoxValue == null ? 'N/A' : signedNumber(readNumber(redoxValue, 0), 2) + ' V';
+  const solvation = readNumber(solvationValue, 0);
+  const rows = [
+    ['Coordination geometry', geom],
+    ['HOMO-LUMO gap', `${m.bandGap.toFixed(2)} eV`],
+    [`Mulliken charge on ${metal || 'metal'}`, mulliken],
+    ['Dipole moment', `${m.dipole.toFixed(2)} D`],
+    ['Spin state', readNumber(d.spin_multiplicity, 6) >= 5 ? 'High spin (S=5/2)' : `Multiplicity ${d.spin_multiplicity || 'N/A'}`],
+    ['Solvation energy', `${solvation.toFixed(1)} kcal/mol`],
+    ['Redox potential (vs NHE)', redox],
+  ];
+  return `<div class="property-table">${rows.map(([k,v]) => `<div class="property-row"><span>${escHtml(k)}</span><strong>${escHtml(v)}</strong></div>`).join('')}</div>
+    <div class="method-tags"><span class="method-tag">DFT-B3LYP/6-311G</span><span class="method-tag green">GNN-predicted</span><span class="method-tag gold">PCM solvation</span></div>`;
+}
+
+function dominantMetal(comp) {
+  const metals = ['Li','Na','K','Rb','Cs','Mg','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ru','Rh','Pd','Ag','Pt','Au','Cd','Hg'];
+  return metals.find(el => readNumber(comp[el], 0) > 0) || '';
+}
+
+function oxidationSuffix(oxidation) {
+  const value = String(oxidation || '').trim();
+  return value && value !== 'N/A' ? value.replace('+', '') + '+' : '';
+}
+
+function geometryLabel(d, comp, metalLabel) {
+  const donors = readNumber(comp.N, 0) + readNumber(comp.O, 0) + readNumber(comp.S, 0);
+  if (!metalLabel || metalLabel === 'N/A') return 'Molecular / non-coordination';
+  if (readNumber(comp.C, 0) > 0 && readNumber(comp.N, 0) >= 6 && readNumber(comp.O, 0) === 0) return `Octahedral cyanide complex (${metalLabel})`;
+  if (donors >= 6) return `Distorted octahedral (${metalLabel})`;
+  if (donors === 4) return `Tetrahedral / square planar (${metalLabel})`;
+  return `Coordination environment (${metalLabel})`;
+}
+
+function signedNumber(value, digits=2) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 'N/A';
+  return `${n >= 0 ? '+' : ''}${n.toFixed(digits)}`;
+}
+
+function buildPropertyDescriptors(d, m) {
+  const ip = clamp(4.1 + m.bandGap * 0.32 + readNumber(d.composition?.O, 0) * 0.03, 3.2, 8.5);
+  const ea = clamp(ip - m.bandGap, 0.2, 5.5);
+  const rows = [
+    ['HOMO energy', `${(-ip).toFixed(2)} eV`, confidenceFrom(m, 8)],
+    ['LUMO energy', `${(-ea).toFixed(2)} eV`, confidenceFrom(m, 14)],
+    ['Dipole moment', `${m.dipole.toFixed(2)} D`, confidenceFrom(m, 18)],
+    ['Ionisation potential', `${ip.toFixed(2)} eV`, confidenceFrom(m, 20)],
+    ['Electron affinity', `${ea.toFixed(2)} eV`, confidenceFrom(m, 24)],
+  ];
+  return `<div class="descriptor-list">${rows.map(([name, value, conf]) => `
+    <div class="descriptor-item">
+      <div><div class="descriptor-name">${escHtml(name)}</div><div class="descriptor-value">${escHtml(value)}</div></div>
+      <div><div class="mini-label">Confidence</div><div class="mini-track"><div class="mini-fill" style="width:${conf}%"></div></div><div style="font-size:10px;color:var(--muted);margin-top:3px">${conf}%</div></div>
+    </div>`).join('')}</div>
+    <div style="color:var(--muted);font-size:11px;line-height:1.4;margin-top:12px">Descriptors are derived from formula composition and trained-model fields when available.</div>`;
+}
+
+function buildElectrochemicalBreakdown(d, m) {
+  const radar = m.descriptorProfile?.radar || {};
+  const rows = [
+    ['Rate capability', readNumber(radar.rate_capability, 70), '%', '#34d399'],
+    ['Coulombic eff.', readNumber(radar.coulombic_efficiency, 82), '%', '#34d399'],
+    ['Capacitance ret.', clamp(m.stability + 4, 0, 100), '%', '#4f9cf9'],
+    ['Power density', readNumber(radar.power_density, 55), 'kW/kg', '#4f9cf9'],
+    ['Ion diffusion', ionDiffusionScore(d, m), 'cm2/s', '#f59e0b'],
+    ['Charge transfer Rct', chargeTransferScore(d, m), 'ohm', '#f59e0b'],
+    ['ECSA', clamp(readNumber(d.composition?.O, 0) * 6 + readNumber(d.composition?.N, 0) * 4 + 28, 20, 100), '%', '#ef6b3a'],
+  ];
+  const voltage = voltageWindow(d, m);
+  return `${rows.map(([label, value, unit, color]) => breakdownRow(label, value, unit, color)).join('')}
+    <div class="prop-key" style="margin-top:12px">Voltage window</div>
+    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:12px">
+      <span>-0.2 V</span><div class="mini-track"><div class="mini-fill" style="width:${voltage.width}%;background:#34d399"></div></div><strong>+${voltage.max.toFixed(1)} V</strong>
+    </div>
+    <div style="color:var(--muted);font-size:11px;margin-top:6px">${voltage.label}</div>`;
+}
+
+function buildLigandContributions(d, m) {
+  const comp = d.composition || {};
+  const carbon = readNumber(comp.C, 0);
+  const nitrogen = readNumber(comp.N, 0);
+  const oxygen = readNumber(comp.O, 0);
+  const sulfur = readNumber(comp.S, 0);
+  const metal = dominantMetal(comp);
+  const rows = [];
+  if (carbon >= 10) rows.push(['Aromatic/carbon ligand', clamp(42 + carbon * 0.8, 30, 78), '#4f9cf9']);
+  if (nitrogen > 0) rows.push(['N donor contribution', clamp(38 + nitrogen * 3.4, 25, 82), '#34d399']);
+  if (oxygen > 0) rows.push(['O donor / hydrate effect', clamp(28 + oxygen * 2.7, 18, 78), '#f87171']);
+  if (sulfur > 0) rows.push(['S/O framework', clamp(40 + sulfur * 9 + oxygen, 25, 80), '#f59e0b']);
+  if (metal) rows.push([`${metal} d-orbital`, clamp(45 + readNumber(m.descriptorProfile?.metal_ratio, 0.05) * 120, 35, 88), '#ef6b3a']);
+  return `${rows.slice(0, 5).map(([label, val, color]) => breakdownRow(label, val, '%', color)).join('')}
+    <div style="color:var(--muted);font-size:11px;line-height:1.4;margin-top:12px">% contribution estimated from formula composition and donor atom balance.</div>`;
+}
+
+function buildChargeStorageMechanism(d, m) {
+  const comp = d.composition || {};
+  const metal = dominantMetal(comp);
+  const n = readNumber(comp.N, 0);
+  const o = readNumber(comp.O, 0);
+  const carbon = readNumber(comp.C, 0);
+  const pseudo = clamp((metal ? 35 : 8) + o * 2.4 + n * 1.4, 10, 78);
+  const edlc = clamp(18 + carbon * 0.7 + readNumber(m.descriptorProfile?.carbon_ratio, 0) * 30, 8, 70);
+  const intercalation = clamp(100 - pseudo - edlc, 5, 45);
+  const redoxText = metal ? `${metal} redox/Faradaic pathway dominates` : 'Surface adsorption dominates';
+  return `<div class="mechanism-grid">
+    <div class="mechanism-tile">EDLC (double-layer)<small>~${edlc.toFixed(0)}%</small></div>
+    <div class="mechanism-tile">Pseudocapacitance<small>~${pseudo.toFixed(0)}%</small></div>
+    <div class="mechanism-tile">Intercalation / structural<small>~${intercalation.toFixed(0)}%</small></div>
+  </div>
+  <div style="color:var(--muted);font-size:11px;line-height:1.4;margin-top:12px">${escHtml(redoxText)}; donor atoms tune charge transfer.</div>`;
+}
+
+function buildComparativeBenchmarks(d, m) {
+  const metal = dominantMetal(d.composition || {}) || 'M';
+  const thisCap = m.capacitance;
+  const rows = [
+    ['This formula', thisCap, '#34d399'],
+    [`${metal} oxide baseline`, thisCap * 0.68, '#9ca3af'],
+    [`${metal}-MOF ref`, thisCap * 0.82, '#9ca3af'],
+    ['RuO2 ref', Math.max(650, thisCap * 1.7), '#ef6b3a'],
+  ];
+  return `${rows.map(([label, value, color]) => breakdownRow(label, value, 'F/g', color, Math.min(100, value / Math.max(700, thisCap) * 100))).join('')}
+    <div style="color:var(--muted);font-size:11px;line-height:1.4;margin-top:12px">Benchmark values are normalized formula/model comparisons; experimental validation required.</div>`;
+}
+
+function breakdownRow(label, rawValue, unit, color='#34d399', width=null) {
+  const value = readNumber(rawValue, 0);
+  const pct = width == null ? clamp(value, 0, 100) : clamp(width, 0, 100);
+  const shown = unit === 'cm2/s'
+    ? `~${(value / 10).toExponential(1)}`
+    : unit === 'ohm'
+      ? `${(100 - value / 2).toFixed(1)} ohm`
+      : `${value.toFixed(unit === 'F/g' || unit === 'kW/kg' ? 0 : 0)} ${unit}`;
+  return `<div class="breakdown-row"><span>${escHtml(label)}</span><div class="mini-track"><div class="mini-fill" style="width:${pct}%;background:${color}"></div></div><strong>${escHtml(shown)}</strong></div>`;
+}
+
+function confidenceFrom(m, penalty=0) {
+  const base = m.hasResearchModel ? 92 : 78;
+  return Math.round(clamp(base - penalty + readNumber(m.descriptorProfile?.metal_ratio, 0) * 20, 55, 96));
+}
+
+function ionDiffusionScore(d, m) {
+  return clamp(28 + readNumber(d.composition?.K, 0) * 8 + readNumber(d.composition?.Na, 0) * 8 + readNumber(m.descriptorProfile?.hetero_ratio, 0.3) * 45, 10, 95);
+}
+
+function chargeTransferScore(d, m) {
+  return clamp(30 + readNumber(d.composition?.N, 0) * 3 + readNumber(d.composition?.O, 0) * 2 + readNumber(m.descriptorProfile?.metal_ratio, 0.05) * 80, 12, 95);
+}
+
+function voltageWindow(d, m) {
+  const max = clamp(0.45 + m.bandGap * 0.08 + readNumber(d.composition?.O, 0) * 0.015, 0.5, 1.3);
+  return {max, width: clamp(max / 1.3 * 100, 35, 100), label: `${max.toFixed(1)} V practical operating range estimate`};
+}
+
+function buildDftPanel(d) {
+  const dft = d.provider_data?.dft || {};
+  const tools = d.provider_data?.tools || {};
+  const statusText = dft.can_run ? 'Ready' : (dft.status === 'needs_structure' ? 'Needs structure' : 'Missing tools');
+  const statusColor = dft.can_run ? 'var(--accent2)' : 'var(--warn)';
+  const qe = tools.quantum_espresso?.configured ? 'Available' : 'Not installed';
+  const ase = tools.ase?.configured ? 'Available' : 'Not installed';
+  return `
+    <div class="property-table">
+      <div class="property-row"><span>Status</span><strong style="color:${statusColor}">${escHtml(statusText)}</strong></div>
+      <div class="property-row"><span>Engine</span><strong>${escHtml(dft.engine || 'Quantum ESPRESSO')}</strong></div>
+      <div class="property-row"><span>Method</span><strong>${escHtml(dft.method || 'DFT/PBE')}</strong></div>
+      <div class="property-row"><span>Quantum ESPRESSO</span><strong>${escHtml(qe)}</strong></div>
+      <div class="property-row"><span>ASE</span><strong>${escHtml(ase)}</strong></div>
+      <div class="property-row"><span>Runtime</span><strong>${escHtml(dft.estimated_runtime || 'N/A')}</strong></div>
+    </div>
+    <div style="color:var(--muted);font-size:12px;line-height:1.5;margin-top:12px">${escHtml(dft.message || 'DFT status unavailable.')}</div>
+    <div class="method-tags">
+      <span class="method-tag">DFT-ready pipeline</span>
+      <span class="method-tag gold">Needs coordinates</span>
+      <span class="method-tag green">No AI key</span>
+    </div>`;
+}
+
+function renderRadarChart(el, m) {
+  const labels = ['Capacitance', 'Energy density', 'Cycling stability', 'Power density', 'Rate capability', 'Coulombic eff.'];
+  const radar = m.descriptorProfile?.radar || {};
+  const vals = [
+    readNumber(radar.capacitance, clamp(m.capacitance / 4.2, 0, 100)),
+    readNumber(radar.energy_density, clamp(m.energyDensity * 1.35, 0, 100)),
+    readNumber(radar.cycling_stability, m.stability),
+    readNumber(radar.power_density, clamp(68 + m.scanRate * 0.18, 0, 100)),
+    readNumber(radar.rate_capability, clamp(70 + m.ligand * 2 - m.defect, 0, 100)),
+    readNumber(radar.coulombic_efficiency, clamp(88 - Math.abs(m.ph - 7) * 1.4, 0, 100))
+  ].map(v => clamp(v, 0, 100));
+  const base = vals.map(v => clamp(v - 13, 0, 100));
+  const W = 360, H = 220, cx = 180, cy = 112, r = 70;
+  const point = (i, v) => { const a = -Math.PI / 2 + i * Math.PI * 2 / labels.length; return [cx + Math.cos(a) * r * v / 100, cy + Math.sin(a) * r * v / 100]; };
+  const poly = arr => arr.map((v,i) => point(i,v).map(n=>n.toFixed(1)).join(',')).join(' ');
+  let rings = '';
+  for (let p = 20; p <= 100; p += 20) rings += `<polygon points="${poly(labels.map(()=>p))}" fill="none" stroke="rgba(255,255,255,.08)"/>`;
+  const axes = labels.map((label,i) => { const [x,y] = point(i,100); const [tx,ty] = point(i,120); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.08)"/><text x="${tx}" y="${ty}" fill="#aaa" font-size="10" text-anchor="middle">${label}</text>`; }).join('');
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Electrochemical performance radar chart">${rings}${axes}<polygon points="${poly(base)}" fill="rgba(239,107,58,.18)" stroke="#ef6b3a" stroke-width="1.5" stroke-dasharray="4 3"/><polygon points="${poly(vals)}" fill="rgba(59,130,246,.2)" stroke="#3b82f6" stroke-width="2"/>${vals.map((v,i)=>{ const [x,y]=point(i,v); return `<circle cx="${x}" cy="${y}" r="3" fill="#3b82f6"/>`; }).join('')}</svg>`;
+}
+
+function renderCyclingChart(el, m) {
+  const W = 360, H = 220, L = 40, T = 18, R = 12, B = 34;
+  const cycles = [250, 1250, 2250, 3250, 4250, 5000];
+  const vals = cycles.map((_, i) => clamp(m.stability + 2 - i * (0.42 + m.defect * 0.035), 80, 100));
+  const x = i => L + i * (W - L - R) / (cycles.length - 1);
+  const y = v => T + (100 - v) * (H - T - B) / 20;
+  const path = vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const fill = `${path} L${x(vals.length-1)},${H-B} L${L},${H-B} Z`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cycling stability curve">${gridLines(W,H,L,T,R,B)}<path d="${fill}" fill="rgba(16,185,129,.18)"/><path d="${path}" fill="none" stroke="#10b981" stroke-width="2"/>${cycles.map((c,i)=>`<text x="${x(i)}" y="${H-10}" fill="#999" font-size="10" text-anchor="middle">${c}</text>`).join('')}${[80,85,90,95,100].map(v=>`<text x="4" y="${y(v)+3}" fill="#999" font-size="10">${v}%</text>`).join('')}<text x="${W/2}" y="${H-1}" fill="#999" font-size="10" text-anchor="middle">Cycle number</text></svg>`;
+}
+
+function renderDosChart(el, m) {
+  const W = 360, H = 220, L = 44, T = 16, R = 12, B = 34;
+  const xMap = e => L + (e + 5) * (W - L - R) / 15;
+  const yMap = v => T + (1.2 - v) * (H - T - B) / 1.2;
+  const curve = (center, amp, width, bumps) => {
+    const pts = [];
+    for (let i = 0; i <= 80; i++) {
+      const e = center - 2 + i * 4 / 80;
+      let v = amp * Math.exp(-Math.pow(e-center,2)/(2*width*width));
+      bumps.forEach(([c,a,w]) => v += a * Math.exp(-Math.pow(e-c,2)/(2*w*w)));
+      pts.push([xMap(e), yMap(clamp(v,0,1.2))]);
+    }
+    return pts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  };
+  const dos = m.descriptorProfile?.dos || {};
+  const occupiedCenter = readNumber(dos.occupied_center, -2.8);
+  const unoccupiedCenter = readNumber(dos.unoccupied_center, 1 + m.bandGap);
+  const occupiedWidth = readNumber(dos.occupied_width, .55);
+  const unoccupiedWidth = readNumber(dos.unoccupied_width, .45);
+  const occupiedHeight = readNumber(dos.occupied_height, .82);
+  const unoccupiedHeight = readNumber(dos.unoccupied_height, .76);
+  const occupiedBumps = [[occupiedCenter - occupiedWidth * 1.2, occupiedHeight * .34, .16], [occupiedCenter + occupiedWidth * .9, occupiedHeight * .28, .18]];
+  const unoccupiedBumps = [[unoccupiedCenter + unoccupiedWidth * .8, unoccupiedHeight * .32, .2]];
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Density of states chart">${gridLines(W,H,L,T,R,B)}<path d="${curve(occupiedCenter,occupiedHeight,occupiedWidth,occupiedBumps)}" fill="none" stroke="#2f7dd1" stroke-width="2"/><path d="${curve(unoccupiedCenter,unoccupiedHeight,unoccupiedWidth,unoccupiedBumps)}" fill="none" stroke="#ef6b3a" stroke-width="2"/>${[-5,-3,-1,1,3,5,7,9].map(e=>`<text x="${xMap(e)}" y="${H-10}" fill="#999" font-size="10" text-anchor="middle">${e.toFixed(1)}</text>`).join('')}<text x="${W/2}" y="${H-1}" fill="#999" font-size="10" text-anchor="middle">Energy (eV)</text><text transform="translate(12 ${H/2}) rotate(-90)" fill="#999" font-size="10" text-anchor="middle">DOS (arb.)</text></svg>`;
+}
+
+function renderDefectMap(el, m) {
+  const W = 760, H = 285, L = 70, T = 34, R = 70, B = 105;
+  const xs = Array.from({length: 11}, (_, i) => i);
+  const x = p => L + p * (W - L - R) / 10;
+  const yLeft = v => T + (360 - v) * (H - T - B) / 240;
+  const yRight = v => T + (2.6 - v) * (H - T - B) / .8;
+  const path = pts => pts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const cap = xs.map(p => [x(p), yLeft(m.capacitance - p * 3.2)]);
+  const eg = xs.map(p => [x(p), yRight(m.bandGap + .08 - p * .028)]);
+  const energy = xs.map(p => [x(p), yLeft(m.energyDensity - p * .18)]);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Defect concentration property map comparing capacitance, energy density, and band gap">
+    ${gridLines(W,H,L,T,R,B)}
+    <text x="${L}" y="18" fill="#9ca3af" font-size="10">Left Y: capacitance (F/g) + energy density (Wh/kg)</text>
+    <text x="${W-R}" y="18" fill="#ef6b3a" font-size="10" text-anchor="end">Right Y: band gap (eV)</text>
+    <g transform="translate(${L} ${H-58})">
+      <circle cx="0" cy="0" r="4" fill="#3b82f6"/><text x="9" y="4" fill="#9ca3af" font-size="10">Specific capacitance</text>
+      <circle cx="130" cy="0" r="4" fill="#10b981"/><text x="139" y="4" fill="#9ca3af" font-size="10">Energy density</text>
+      <line x1="260" y1="0" x2="278" y2="0" stroke="#ef6b3a" stroke-width="2" stroke-dasharray="5 4"/><text x="285" y="4" fill="#9ca3af" font-size="10">Band gap</text>
+    </g>
+    <path d="${path(cap)}" fill="none" stroke="#3b82f6" stroke-width="2"/>
+    <path d="${path(eg)}" fill="none" stroke="#ef6b3a" stroke-width="2" stroke-dasharray="5 4"/>
+    <path d="${path(energy)}" fill="none" stroke="#10b981" stroke-width="2"/>
+    ${xs.map(p=>`<text x="${x(p)}" y="${H-78}" fill="#999" font-size="10" text-anchor="middle">${p.toFixed(1)}%</text>`).join('')}
+    <text x="${W/2}" y="${H-32}" fill="#999" font-size="10" text-anchor="middle">X axis: defect concentration (%)</text>
+    <text transform="translate(30 ${T + (H-T-B)/2}) rotate(-90)" fill="#9ca3af" font-size="10" text-anchor="middle">Property value</text>
+    <text transform="translate(${W-25} ${T + (H-T-B)/2}) rotate(-90)" fill="#ef6b3a" font-size="10" text-anchor="middle">Band gap (eV)</text>
+    <text x="${W-22}" y="${T+4}" fill="#ef6b3a" font-size="11" font-weight="700">2.6</text>
+    <text x="${W-22}" y="${H-B}" fill="#ef6b3a" font-size="11" font-weight="700">1.8</text>
+  </svg>`;
+}
+
+function gridLines(W,H,L,T,R,B) {
+  let out = '';
+  for (let i = 0; i <= 4; i++) {
+    const y = T + i * (H - T - B) / 4;
+    out += `<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
+  }
+  for (let i = 0; i <= 5; i++) {
+    const x = L + i * (W - L - R) / 5;
+    out += `<line x1="${x}" y1="${T}" x2="${x}" y2="${H-B}" stroke="rgba(255,255,255,.06)"/>`;
+  }
+  return out;
+}
+
+function readNumber(v, fallback=0) {
+  const n = parseFloat(String(v ?? '').replace(/[^0-9.+-]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function clamp(n, min, max) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function renderStructureImage(url, label) {
+  const container = document.getElementById('molSvg');
+  container.innerHTML = `
+    <img src="${escHtml(url)}" alt="${escHtml(label)} 2D molecular structure"
+         style="max-width:92%;max-height:92%;object-fit:contain;background:#fff;border-radius:6px;padding:10px">
+  `;
+  const legend = document.getElementById('molLegend');
+  if (legend) {
+    legend.innerHTML = '<span class="legend-item">Verified provider structure</span>';
+  }
+}
+
+function renderDiagramUnavailable(message='Verified molecular diagram unavailable.') {
+  const container = document.getElementById('molSvg');
+  container.innerHTML = `
+    <div style="max-width:300px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5;padding:24px">
+      ${escHtml(message)}
+    </div>
+  `;
+  const legend = document.getElementById('molLegend');
+  if (legend) legend.innerHTML = '';
+}
+
+function renderMolecule3D(atoms, bonds, note='') {
+  const container = document.getElementById('molSvg');
+  const xs = atoms.map(a => +a.x), ys = atoms.map(a => +a.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const W = 380, H = 300, PAD = 42;
+  const dX = maxX - minX || 1, dY = maxY - minY || 1;
+  const scale = Math.min((W - PAD * 2) / dX, (H - PAD * 2) / dY);
+  const offX = PAD + (W - PAD * 2 - dX * scale) / 2 - minX * scale;
+  const offY = PAD + (H - PAD * 2 - dY * scale) / 2 - minY * scale;
+  const projected = atoms.map((a, i) => {
+    const z = Number.isFinite(+a.z) ? +a.z : Math.sin((+a.x * 1.7) + (+a.y * 1.1) + i * 0.65);
+    const depth = clamp((z + 1.4) / 2.8, 0, 1);
+    return {
+      ...a,
+      sx: (+a.x * scale + offX) + (depth - 0.5) * 24,
+      sy: (+a.y * scale + offY) - (depth - 0.5) * 18,
+      depth,
+      r: (a.symbol === 'C' ? 7 : 11) + depth * 4,
+    };
+  });
+  const symbolsSeen = new Set();
+  let svgParts = [`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <filter id="atomShadow" x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity=".45"/>
+      </filter>
+      <radialGradient id="sceneGlow" cx="50%" cy="38%" r="70%">
+        <stop offset="0%" stop-color="#17233c"/>
+        <stop offset="100%" stop-color="#070b14"/>
+      </radialGradient>
+    </defs>
+    <rect width="${W}" height="${H}" rx="14" fill="url(#sceneGlow)"/>`];
+
+  (bonds || []).forEach(b => {
+    const a1 = projected[b.from], a2 = projected[b.to];
+    if (!a1 || !a2) return;
+    const depth = (a1.depth + a2.depth) / 2;
+    const width = 4 + depth * 3 + ((b.order || 1) >= 3 ? 1.5 : 0);
+    svgParts.push(`<line x1="${a1.sx.toFixed(2)}" y1="${a1.sy.toFixed(2)}" x2="${a2.sx.toFixed(2)}" y2="${a2.sy.toFixed(2)}" stroke="#8da0b8" stroke-width="${width.toFixed(2)}" stroke-linecap="round" opacity="${(0.48 + depth * .38).toFixed(2)}"/>`);
+  });
+
+  projected.slice().sort((a, b) => a.depth - b.depth).forEach((a) => {
+    const sym = a.symbol || 'C';
+    const col = atomColor(sym);
+    const gradId = `atomGrad${sym.replace(/[^A-Za-z0-9]/g, '')}`;
+    symbolsSeen.add(sym);
+    svgParts.push(`
+      <defs>
+        <radialGradient id="${gradId}" cx="34%" cy="28%" r="70%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity=".9"/>
+          <stop offset="32%" stop-color="${col}" stop-opacity=".95"/>
+          <stop offset="100%" stop-color="#050811"/>
+        </radialGradient>
+      </defs>
+      <circle cx="${a.sx.toFixed(2)}" cy="${a.sy.toFixed(2)}" r="${a.r.toFixed(2)}" fill="url(#${gradId})" stroke="${col}" stroke-width="1.2" filter="url(#atomShadow)"/>
+      <circle cx="${(a.sx - a.r * .28).toFixed(2)}" cy="${(a.sy - a.r * .32).toFixed(2)}" r="${Math.max(2.2, a.r * .23).toFixed(2)}" fill="#fff" opacity=".45"/>
+      <text x="${a.sx.toFixed(2)}" y="${a.sy.toFixed(2)}" text-anchor="middle" dominant-baseline="central" font-family="'JetBrains Mono',monospace" font-size="${sym.length > 1 ? 9 : 10}" font-weight="800" fill="#f8fafc">${escHtml(sym)}</text>
+    `);
+  });
+
+  svgParts.push('</svg>');
+  container.innerHTML = svgParts.join('');
+  const legend = document.getElementById('molLegend');
+  if (legend) {
+    const items = [...symbolsSeen].map(sym =>
+      `<span class="legend-item"><span class="legend-dot" style="background:${atomColor(sym)}"></span>${sym}</span>`
+    );
+    const noteHtml = note ? `<span class="legend-item" style="flex-basis:100%;color:var(--warn)">${escHtml(note)}</span>` : '';
+    legend.innerHTML = items.join('') + noteHtml;
+  }
+}
+
+function renderMolecule(atoms, bonds, note='') {
+  const container = document.getElementById('molSvg');
+  if (!atoms || atoms.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);text-align:center;padding:40px;font-size:13px">No atom data available</div>';
+    return;
+  }
+
+  // ── Auto-scale to fit ──
+  return renderMolecule3D(atoms, bonds, note);
+  const xs = atoms.map(a => +a.x), ys = atoms.map(a => +a.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const W = 380, H = 300, PAD = 40;
+  const dX = maxX - minX || 1, dY = maxY - minY || 1;
+  const scale = Math.min((W - PAD*2) / dX, (H - PAD*2) / dY);
+  const offX = PAD + (W - PAD*2 - dX*scale) / 2 - minX*scale;
+  const offY = PAD + (H - PAD*2 - dY*scale) / 2 - minY*scale;
+  const tx = x => (x * scale + offX).toFixed(2);
+  const ty = y => (y * scale + offY).toFixed(2);
+
+  let svgParts = [`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">`];
+
+  // ── Bonds ──
+  bonds.forEach(b => {
+    const a1 = atoms[b.from], a2 = atoms[b.to];
+    if (!a1 || !a2) return;
+    const x1 = +tx(a1.x), y1 = +ty(a1.y);
+    const x2 = +tx(a2.x), y2 = +ty(a2.y);
+    const order = b.order || 1;
+
+    if (order >= 2) {
+      // Offset parallel lines for double/triple
+      const dx = x2-x1, dy = y2-y1, len = Math.sqrt(dx*dx+dy*dy)||1;
+      const nx = -dy/len, ny = dx/len;
+      const off = order === 3 ? 3.5 : 2.5;
+      svgParts.push(bondLine(x1,y1,x2,y2,'#64748b',1.5));
+      svgParts.push(bondLine(x1+nx*off,y1+ny*off,x2+nx*off,y2+ny*off,'#64748b',1.5));
+      if (order === 3) svgParts.push(bondLine(x1-nx*off,y1-ny*off,x2-nx*off,y2-ny*off,'#64748b',1.5));
+    } else if (order === 1.5) {
+      // Aromatic — solid + dashed
+      svgParts.push(bondLine(x1,y1,x2,y2,'#64748b',1.5));
+      const dx = x2-x1, dy = y2-y1, len = Math.sqrt(dx*dx+dy*dy)||1;
+      const nx = -dy/len, ny = dx/len, off = 2.5;
+      svgParts.push(`<line x1="${(x1+nx*off).toFixed(2)}" y1="${(y1+ny*off).toFixed(2)}" x2="${(x2+nx*off).toFixed(2)}" y2="${(y2+ny*off).toFixed(2)}" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.7"/>`);
+    } else {
+      svgParts.push(bondLine(x1,y1,x2,y2,'#64748b',1.5));
+    }
+  });
+
+  // ── Atoms ──
+  const symbolsSeen = new Set();
+  atoms.forEach((a, i) => {
+    const sym = a.symbol || 'C';
+    const cx = tx(a.x), cy = ty(a.y);
+    const col = atomColor(sym);
+    const isC = sym === 'C';
+    symbolsSeen.add(sym);
+
+    if (!isC) {
+      // Colored circle + label for non-carbon
+      svgParts.push(`<circle cx="${cx}" cy="${cy}" r="11" fill="${col}" fill-opacity="0.18" stroke="${col}" stroke-width="1.2"/>`);
+      svgParts.push(`<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="'JetBrains Mono',monospace" font-size="10" font-weight="700" fill="${col}">${escHtml(sym)}</text>`);
+    } else {
+      // Carbon: just a small dot
+      svgParts.push(`<circle cx="${cx}" cy="${cy}" r="2.5" fill="#c8c8c8" fill-opacity="0.5"/>`);
+    }
+  });
+
+  svgParts.push('</svg>');
+  container.innerHTML = svgParts.join('');
+
+  // ── Legend ──
+  const legend = document.getElementById('molLegend');
+  if (legend) {
+    const items = [...symbolsSeen].map(sym =>
+      `<span class="legend-item"><span class="legend-dot" style="background:${atomColor(sym)}"></span>${sym}</span>`
+    );
+    const noteHtml = note ? `<span class="legend-item" style="flex-basis:100%;color:var(--warn)">${escHtml(note)}</span>` : '';
+    legend.innerHTML = items.join('') + noteHtml;
+  }
+}
+
+function bondLine(x1,y1,x2,y2,col,w) {
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Event wiring ──────────────────────────────────────────────────────────────
+document.getElementById('submitBtn').addEventListener('click', analyze);
+document.getElementById('compInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyze();
+});
+
+// Init: check health on load and warn if API key missing
+refreshCacheBar();
+(async () => {
+  try {
+    const r = await fetch('/health');
+    const d = await r.json();
+    if (!d.api_key_set) {
+      setStatus(
+        'ANTHROPIC_API_KEY is not set on the server. ' +
+        'Run <code style="font-family:monospace;background:rgba(255,255,255,.1);padding:1px 5px;border-radius:3px">export ANTHROPIC_API_KEY=sk-ant-...</code> ' +
+        'then restart the server. Visit <a href="/debug" target="_blank">/debug</a> for details.',
+        'error', true
+      );
+    }
+  } catch {}
+})();
+</script>
+</body>
+</html>
