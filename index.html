@@ -744,6 +744,65 @@ const ATOM_COLORS = {
 };
 function atomColor(sym) { return ATOM_COLORS[sym] || ATOM_COLORS.DEFAULT; }
 
+// ── Molecule loader helpers ───────────────────────────────────────────────────
+function buildMolLoader() {
+  return `<div class="mol-loader">
+    <div class="mol-scene">
+      <div class="mol-ring mol-ring-1"></div>
+      <div class="mol-ring mol-ring-2"></div>
+      <div class="mol-ring mol-ring-3"></div>
+      <svg class="mol-hex" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="35,4 62,19.5 62,50.5 35,66 8,50.5 8,19.5"
+          stroke="rgba(79,156,249,0.25)" stroke-width="1.5" stroke-dasharray="6 4" fill="none"/>
+        <polygon points="35,12 55,23.5 55,46.5 35,58 15,46.5 15,23.5"
+          stroke="rgba(52,211,153,0.15)" stroke-width="1" fill="none"/>
+      </svg>
+      <div class="mol-nucleus"></div>
+      <div class="mol-atom mol-a-c mol-o1"></div>
+      <div class="mol-atom mol-a-n mol-o1b"></div>
+      <div class="mol-atom mol-a-o mol-o1c"></div>
+      <div class="mol-atom mol-a-h mol-o2"></div>
+      <div class="mol-atom mol-a-s mol-o2b"></div>
+    </div>
+    <div class="mol-text">
+      <div class="mol-label">Analyzing compound</div>
+      <div class="mol-phrase" id="molPhrase">Querying PubChem database…</div>
+    </div>
+  </div>`;
+}
+const _molPhrases = [
+  'Querying PubChem database…',
+  'Parsing molecular formula…',
+  'Fetching OQMD entries…',
+  'Computing descriptor profile…',
+  'Estimating band gap & dipole…',
+  'Predicting electrochemical properties…',
+  'Building molecular diagram…',
+  'Running formula-based ML model…',
+  'Calculating bond topology…',
+  'Resolving IUPAC name…',
+];
+let _molPhraseTimer = null;
+function startMolLoaderCycle() {
+  if (_molPhraseTimer) { clearTimeout(_molPhraseTimer); _molPhraseTimer = null; }
+  let i = 0;
+  function tick() {
+    const el = document.getElementById('molPhrase');
+    if (!el) { _molPhraseTimer = null; return; }
+    i = (i + 1) % _molPhrases.length;
+    el.style.opacity = '0';
+    el.style.transition = 'opacity .3s';
+    setTimeout(() => {
+      const el2 = document.getElementById('molPhrase');
+      if (!el2) return;
+      el2.textContent = _molPhrases[i];
+      el2.style.opacity = '1';
+    }, 320);
+    _molPhraseTimer = setTimeout(tick, 2200);
+  }
+  _molPhraseTimer = setTimeout(tick, 2200);
+}
+
 // ── Status helper ─────────────────────────────────────────────────────────────
 let _statusTimer = null;
 function setStatus(msg, type='info', html=false) {
@@ -799,68 +858,6 @@ async function analyze() {
   const grid = document.getElementById('resultsGrid');
   grid.innerHTML = buildMolLoader();
   startMolLoaderCycle();
-
-  // ── Molecule loader helpers ──
-  function buildMolLoader() {
-    return `<div class="mol-loader">
-      <div class="mol-scene">
-        <!-- Orbit rings -->
-        <div class="mol-ring mol-ring-1"></div>
-        <div class="mol-ring mol-ring-2"></div>
-        <div class="mol-ring mol-ring-3"></div>
-        <!-- Rotating hexagon bonds (SVG) -->
-        <svg class="mol-hex" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="35,4 62,19.5 62,50.5 35,66 8,50.5 8,19.5"
-            stroke="rgba(79,156,249,0.25)" stroke-width="1.5" stroke-dasharray="6 4" fill="none"/>
-          <polygon points="35,12 55,23.5 55,46.5 35,58 15,46.5 15,23.5"
-            stroke="rgba(52,211,153,0.15)" stroke-width="1" fill="none"/>
-        </svg>
-        <!-- Centre nucleus -->
-        <div class="mol-nucleus"></div>
-        <!-- Orbit 1: C, N, O -->
-        <div class="mol-atom mol-a-c mol-o1"></div>
-        <div class="mol-atom mol-a-n mol-o1b"></div>
-        <div class="mol-atom mol-a-o mol-o1c"></div>
-        <!-- Orbit 2: H, S -->
-        <div class="mol-atom mol-a-h mol-o2"></div>
-        <div class="mol-atom mol-a-s mol-o2b"></div>
-      </div>
-      <div class="mol-text">
-        <div class="mol-label">Analyzing compound</div>
-        <div class="mol-phrase" id="molPhrase">Querying PubChem database…</div>
-      </div>
-    </div>`;
-  }
-  const _molPhrases = [
-    'Querying PubChem database…',
-    'Parsing molecular formula…',
-    'Fetching OQMD entries…',
-    'Computing descriptor profile…',
-    'Estimating band gap & dipole…',
-    'Predicting electrochemical properties…',
-    'Building molecular diagram…',
-    'Running formula-based ML model…',
-    'Calculating bond topology…',
-    'Resolving IUPAC name…',
-  ];
-  let _molPhraseTimer = null;
-  function startMolLoaderCycle() {
-    let i = 0;
-    function tick() {
-      const el = document.getElementById('molPhrase');
-      if (!el) return;
-      i = (i + 1) % _molPhrases.length;
-      el.style.opacity = '0';
-      el.style.transition = 'opacity .3s';
-      setTimeout(() => {
-        if (!document.getElementById('molPhrase')) return;
-        el.textContent = _molPhrases[i];
-        el.style.opacity = '1';
-      }, 320);
-      _molPhraseTimer = setTimeout(tick, 2200);
-    }
-    _molPhraseTimer = setTimeout(tick, 2200);
-  }
 
   try {
     // ── 1. Fetch component metadata ──
