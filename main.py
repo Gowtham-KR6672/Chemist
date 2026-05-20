@@ -129,7 +129,9 @@ def parse_formula_counts(raw: str) -> dict[str, int] | None:
     text = raw.strip()
     if not re.search(r"[A-Z][a-z]?\d*", text):
         return None
-    text = re.sub(r"\s+", "", text).replace("·", ".")
+    text = re.sub(r"\s+", "", text)
+    text = text.replace("Â·", ".").replace("·", ".").replace("∙", ".").replace("•", ".")
+    text = re.sub(r"[^A-Za-z0-9()[\]{}.+-]+(?=\d*H2O\]?$)", ".", text)
     text = re.sub(r"[\^][+-]?\d*[+-]?$", "", text)
     text = move_terminal_hydrate_outside_bracket(text)
 
@@ -625,7 +627,7 @@ def generated_schematic_diagram(counts: dict[str, int]) -> tuple[list[dict], lis
 
     metals = [
         "Mn", "Co", "Fe", "Ni", "Cu", "Zn", "Cr", "V", "Ti", "Ru", "Rh",
-        "Pd", "Ag", "Pt", "Au", "Cd", "Hg", "Mg", "Ca",
+        "Pd", "Ag", "Pt", "Au", "Cd", "Hg", "Mg", "Ca", "Sr", "Ba",
     ]
     metal = next((element for element in metals if counts.get(element, 0)), None)
 
@@ -646,6 +648,49 @@ def generated_schematic_diagram(counts: dict[str, int]) -> tuple[list[dict], lis
     nitrogen = counts.get("N", 0)
     sulfur = counts.get("S", 0)
     oxygen = counts.get("O", 0)
+
+    if not metal and counts.get("K", 0) and carbon >= 20 and nitrogen >= 4 and oxygen >= 8:
+        metal = "K"
+
+    if metal in {"Ba", "Sr", "Ca", "K"} and carbon >= 20 and nitrogen >= 4 and oxygen >= 8:
+        center = add_atom(metal, 0, 0)
+        donor_specs = [
+            ("O", -0.95, -0.55), ("O", -0.95, 0.55), ("O", 0.95, -0.55), ("O", 0.95, 0.55),
+            ("N", -0.25, -1.05), ("N", 0.25, -1.05), ("N", -0.25, 1.05), ("N", 0.25, 1.05),
+        ]
+        donors = []
+        for symbol, x, y in donor_specs:
+            donor = add_atom(symbol, x, y)
+            donors.append(donor)
+            bonds.append({"from": center, "to": donor, "order": 1})
+
+        ring_specs = [(-3.15, 0.82, donors[0], 0), (3.15, 0.82, donors[2], 3)]
+        for cx, cy, donor, ring_anchor in ring_specs:
+            ring = add_ring(cx, cy, 0.62)
+            bridge = add_atom("C", cx * 0.63, cy * 0.72)
+            carbox_c = add_atom("C", cx * 0.42, cy * 0.45)
+            carbox_o = add_atom("O", cx * 0.27, cy * 0.28)
+            bonds.append({"from": ring[ring_anchor], "to": bridge, "order": 1})
+            bonds.append({"from": bridge, "to": carbox_c, "order": 1})
+            bonds.append({"from": carbox_c, "to": donor, "order": 1})
+            bonds.append({"from": carbox_c, "to": carbox_o, "order": 2})
+
+        ligand_specs = [
+            (-2.3, -1.15, donors[4]), (-1.65, -1.85, donors[5]),
+            (1.65, -1.85, donors[4]), (2.3, -1.15, donors[5]),
+            (-2.3, 1.15, donors[6]), (-1.65, 1.85, donors[7]),
+            (1.65, 1.85, donors[6]), (2.3, 1.15, donors[7]),
+        ]
+        for x, y, donor in ligand_specs:
+            atom = add_atom("N" if abs(y) > 1.5 else "O", x, y)
+            bonds.append({"from": donor, "to": atom, "order": 1})
+
+        hydrate_oxygen_count = min(max(0, oxygen - 10), 4)
+        hydrate_positions = [(-3.1, -1.55), (3.1, -1.55), (-3.1, 1.95), (3.1, 1.95)]
+        for i in range(hydrate_oxygen_count):
+            water = add_atom("O", *hydrate_positions[i])
+            bonds.append({"from": center, "to": water, "order": 1})
+        return atoms, bonds
 
     if metal and sulfur and oxygen >= 4 and carbon == 0:
         center = add_atom(metal, -1.35, 0)
