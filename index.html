@@ -8,20 +8,33 @@
   /* ── Reset & base ────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg:       #f8fafc;
-    --surface:  #ffffff;
-    --card:     #ffffff;
-    --border:   #d9e2ef;
-    --accent:   #2563eb;
-    --accent2:  #059669;
+    --bg:       #0f1117;
+    --surface:  #171b26;
+    --card:     #1e2333;
+    --border:   #2a3050;
+    --accent:   #4f9cf9;
+    --accent2:  #34d399;
     --warn:     #f59e0b;
     --danger:   #f87171;
-    --text:     #111827;
-    --muted:    #64748b;
+    --text:     #e2e8f0;
+    --muted:    #8892a4;
     --mono:     'JetBrains Mono', 'Fira Code', monospace;
     --sans:     'Inter', system-ui, sans-serif;
     --radius:   10px;
-    --shadow:   0 8px 24px rgba(15,23,42,.08);
+    --shadow:   0 4px 24px rgba(0,0,0,.4);
+  }
+  body.light-mode {
+    --bg:       #f5f7fb;
+    --surface:  #ffffff;
+    --card:     #ffffff;
+    --border:   #d6dce8;
+    --accent:   #2563eb;
+    --accent2:  #059669;
+    --warn:     #d97706;
+    --danger:   #dc2626;
+    --text:     #172033;
+    --muted:    #5d6678;
+    --shadow:   0 4px 20px rgba(15,23,42,.12);
   }
   body {
     font-family: var(--sans);
@@ -39,10 +52,42 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: #ffffff;
+    background: var(--surface);
   }
   .logo { font-size: 20px; font-weight: 700; letter-spacing: -.5px; }
   .logo span { color: var(--accent); }
+  .theme-toggle {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: background .2s, border-color .2s, color .2s, transform .1s;
+  }
+  .theme-toggle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .theme-toggle:active { transform: scale(.98); }
+  .theme-toggle-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: inset -4px -4px 0 rgba(255,255,255,.38);
+  }
+  body.light-mode .theme-toggle-icon {
+    background: #f59e0b;
+    box-shadow: 0 0 0 4px rgba(245,158,11,.18);
+  }
   .badge {
     font-size: 10px; font-weight: 600; text-transform: uppercase;
     background: rgba(79,156,249,.15); color: var(--accent);
@@ -158,7 +203,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #f8fafc;
+    background: rgba(255,255,255,.02);
   }
   .card-title {
     font-size: 13px;
@@ -250,7 +295,7 @@
     width: 100%;
     height: 320px;
     border-radius: 10px;
-    background: #ffffff;
+    background: #0a0d16;
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
@@ -268,16 +313,26 @@
   .legend-item { display: flex; align-items: center; gap: 4px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 
-  /* ── State messages ──────────────────────────────── */
+  /* ── State messages (toast — fixed, never overlaps content) ── */
   #statusMsg {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
     font-size: 13px;
-    padding: 10px 16px;
-    border-radius: 8px;
+    font-weight: 500;
+    padding: 12px 18px;
+    border-radius: 10px;
+    max-width: 460px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.45);
     display: none;
+    opacity: 1;
+    transition: opacity .4s ease;
   }
-  #statusMsg.info  { background: rgba(79,156,249,.1); color: var(--accent);  border: 1px solid rgba(79,156,249,.2); }
-  #statusMsg.error { background: rgba(248,113,113,.1); color: var(--danger); border: 1px solid rgba(248,113,113,.2); }
-  #statusMsg.ok    { background: rgba(52,211,153,.1);  color: var(--accent2);border: 1px solid rgba(52,211,153,.2); }
+  #statusMsg.hiding { opacity: 0; }
+  #statusMsg.info  { background: rgba(79,156,249,.15);  color: var(--accent);  border: 1px solid rgba(79,156,249,.3); }
+  #statusMsg.error { background: rgba(248,113,113,.15); color: var(--danger);  border: 1px solid rgba(248,113,113,.3); }
+  #statusMsg.ok    { background: rgba(52,211,153,.15);  color: var(--accent2); border: 1px solid rgba(52,211,153,.3); }
 
   .placeholder-msg {
     text-align: center;
@@ -288,7 +343,7 @@
   }
   .placeholder-msg .icon { font-size: 40px; margin-bottom: 12px; opacity: .4; }
 
-  /* ── Spinner ─────────────────────────────────────── */
+  /* ── Spinner (legacy, kept for fallback) ─────────── */
   .spinner {
     width: 28px; height: 28px;
     border: 3px solid var(--border);
@@ -298,6 +353,119 @@
     margin: auto;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Molecule Loader (full-screen overlay) ───────── */
+  .mol-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15,17,23,.82);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    gap: 40px;
+    /* span the grid too in case it sits inside grid */
+    grid-column: 1 / -1;
+  }
+  .mol-scene {
+    position: relative;
+    width: 260px;
+    height: 260px;
+  }
+  /* Centre nucleus */
+  .mol-nucleus {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 42px; height: 42px;
+    transform: translate(-50%,-50%);
+    background: radial-gradient(circle at 38% 35%, #6ee7f7, #4f9cf9);
+    border-radius: 50%;
+    box-shadow: 0 0 0 8px rgba(79,156,249,.15), 0 0 40px rgba(79,156,249,.6);
+    animation: mol-pulse 2s ease-in-out infinite;
+  }
+  @keyframes mol-pulse {
+    0%,100% { box-shadow: 0 0 0 8px rgba(79,156,249,.15), 0 0 40px rgba(79,156,249,.6); }
+    50%      { box-shadow: 0 0 0 16px rgba(79,156,249,.07), 0 0 70px rgba(79,156,249,.8); }
+  }
+  /* Orbit rings */
+  .mol-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,255,255,.13);
+    transform: translate(-50%,-50%);
+  }
+  .mol-ring-1 { width: 130px; height: 130px; }
+  .mol-ring-2 { width: 200px; height: 200px; border-color: rgba(255,255,255,.08); }
+  .mol-ring-3 { width: 260px; height: 260px; border-color: rgba(255,255,255,.05); }
+  /* Orbiting atoms */
+  .mol-atom {
+    position: absolute;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+  }
+  /* Orbit 1 — 3 atoms */
+  .mol-o1  { animation: mol-orbit1 2.2s linear infinite; }
+  .mol-o1b { animation: mol-orbit1 2.2s linear infinite; animation-delay: -.73s; }
+  .mol-o1c { animation: mol-orbit1 2.2s linear infinite; animation-delay: -1.47s; }
+  @keyframes mol-orbit1 {
+    from { transform: translate(-50%,-50%) rotate(0deg)   translateX(65px) rotate(0deg); }
+    to   { transform: translate(-50%,-50%) rotate(360deg) translateX(65px) rotate(-360deg); }
+  }
+  /* Orbit 2 — 2 atoms, counter */
+  .mol-o2  { animation: mol-orbit2 3.4s linear infinite; }
+  .mol-o2b { animation: mol-orbit2 3.4s linear infinite; animation-delay: -1.7s; }
+  @keyframes mol-orbit2 {
+    from { transform: translate(-50%,-50%) rotate(0deg)    translateX(100px) rotate(0deg); }
+    to   { transform: translate(-50%,-50%) rotate(-360deg) translateX(100px) rotate(360deg); }
+  }
+  /* Atom dot sizes & colors */
+  .mol-a-c  { width: 22px; height: 22px; background: #c8c8c8; margin: -11px 0 0 -11px;
+              box-shadow: 0 0 10px rgba(200,200,200,.7); }
+  .mol-a-n  { width: 20px; height: 20px; background: #4f9cf9; margin: -10px 0 0 -10px;
+              box-shadow: 0 0 14px rgba(79,156,249,.9); }
+  .mol-a-o  { width: 18px; height: 18px; background: #f87171; margin: -9px 0 0 -9px;
+              box-shadow: 0 0 14px rgba(248,113,113,.9); }
+  .mol-a-h  { width: 13px; height: 13px; background: #fff;   margin: -6.5px 0 0 -6.5px;
+              box-shadow: 0 0 10px rgba(255,255,255,.8); }
+  .mol-a-s  { width: 20px; height: 20px; background: #fde68a; margin: -10px 0 0 -10px;
+              box-shadow: 0 0 14px rgba(253,230,138,.9); }
+  /* Rotating bond hexagon (benzene ring feel) */
+  .mol-hex {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 128px; height: 128px;
+    transform: translate(-50%,-50%);
+    animation: mol-spin-hex 6s linear infinite;
+  }
+  @keyframes mol-spin-hex { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  /* Text cycling */
+  .mol-text {
+    text-align: center;
+    font-size: 16px;
+    color: var(--muted);
+    letter-spacing: .01em;
+    min-height: 52px;
+  }
+  .mol-label {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: var(--accent);
+    margin-bottom: 10px;
+    opacity: .9;
+  }
+  .mol-phrase {
+    animation: mol-fadephrase 2.8s ease-in-out infinite;
+  }
+  @keyframes mol-fadephrase {
+    0%,100% { opacity: .4; }
+    50%      { opacity: 1; }
+  }
 
   /* ── Cache strip ─────────────────────────────────── */
   #cacheBar {
@@ -337,8 +505,8 @@
     font-weight: 800;
   }
   .compound-chip {
-    border: 1px solid var(--border);
-    background: #f8fafc;
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.04);
     color: var(--muted);
     border-radius: 7px;
     padding: 3px 10px;
@@ -355,8 +523,8 @@
     gap: 12px;
   }
   .metric-card {
-    background: #ffffff;
-    border: 1px solid var(--border);
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.08);
     border-radius: 8px;
     padding: 15px 16px;
     min-height: 92px;
@@ -390,15 +558,15 @@
     gap: 16px;
   }
   .ml-card {
-    background: #ffffff;
-    border: 1px solid var(--border);
+    background: rgba(255,255,255,.055);
+    border: 1px solid rgba(255,255,255,.16);
     border-radius: 8px;
     padding: 18px 20px;
     min-height: 236px;
   }
   .ml-card.full { grid-column: 1 / -1; }
   .ml-card-title {
-    color: var(--text);
+    color: #c8c8c8;
     font-size: 14px;
     font-weight: 800;
     margin-bottom: 14px;
@@ -409,7 +577,7 @@
     align-items: center;
     gap: 12px;
     margin: 12px 0;
-    color: var(--text);
+    color: #d1d5db;
     font-weight: 700;
     font-size: 14px;
   }
@@ -419,14 +587,14 @@
   }
   .control-value {
     text-align: right;
-    color: var(--text);
+    color: #fff;
   }
   .ml-run-btn {
     width: 100%;
     margin-top: 8px;
-    border: 1px solid var(--border);
+    border: 1px solid rgba(255,255,255,.28);
     background: transparent;
-    color: var(--text);
+    color: #fff;
     border-radius: 8px;
     padding: 10px 14px;
     font-weight: 800;
@@ -441,6 +609,18 @@
     width: 100%;
     height: 220px;
     display: block;
+  }
+  body.light-mode .chart-box svg text[fill="#999"],
+  body.light-mode .chart-box svg text[fill="#9ca3af"],
+  body.light-mode .chart-box svg text[fill="#aaa"] {
+    fill: #475569;
+  }
+  body.light-mode .chart-box svg line[stroke="rgba(255,255,255,.08)"],
+  body.light-mode .chart-box svg polygon[stroke="rgba(255,255,255,.08)"] {
+    stroke: rgba(15,23,42,.16);
+  }
+  body.light-mode .chart-box svg line[stroke="rgba(255,255,255,.06)"] {
+    stroke: rgba(15,23,42,.1);
   }
   #defectMapChart {
     min-height: 300px;
@@ -458,7 +638,7 @@
   }
   .bar-track {
     height: 9px;
-    background: #e5e7eb;
+    background: rgba(255,255,255,.08);
     border-radius: 10px;
     overflow: hidden;
   }
@@ -475,10 +655,10 @@
     grid-template-columns: minmax(160px, 1fr) auto;
     gap: 12px;
     padding: 8px 0;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid rgba(255,255,255,.1);
     font-size: 13px;
   }
-  .property-row strong { color: #171b26; }
+  .property-row strong { color: #fff; }
   .descriptor-list {
     display: grid;
     gap: 8px;
@@ -488,17 +668,17 @@
     grid-template-columns: 1fr 92px;
     gap: 12px;
     align-items: center;
-    background: #f8fafc;
+    background: rgba(0,0,0,.18);
     border-radius: 8px;
     padding: 10px 12px;
   }
   .descriptor-name {
-    color: var(--muted);
+    color: #c8c8c8;
     font-size: 13px;
     font-weight: 700;
   }
   .descriptor-value {
-    color: var(--text);
+    color: #fff;
     font-weight: 800;
     margin-top: 2px;
   }
@@ -510,7 +690,7 @@
   }
   .mini-track {
     height: 7px;
-    background: #e5e7eb;
+    background: rgba(255,255,255,.09);
     border-radius: 20px;
     overflow: hidden;
   }
@@ -532,7 +712,7 @@
     gap: 10px;
   }
   .mechanism-tile {
-    background: #f8fafc;
+    background: rgba(0,0,0,.18);
     border-radius: 8px;
     padding: 12px;
     text-align: center;
@@ -556,10 +736,59 @@
     font-size: 11px;
     font-weight: 800;
     background: rgba(79,156,249,.15);
-    color: var(--accent);
+    color: #8ec5ff;
   }
-  .method-tag.green { background: rgba(5,150,105,.14); color: var(--accent2); }
-  .method-tag.gold { background: rgba(245,158,11,.16); color: #b45309; }
+  .method-tag.green { background: rgba(120,214,75,.18); color: #80d44d; }
+  .method-tag.gold { background: rgba(245,158,11,.16); color: #f2b441; }
+  body.light-mode .card,
+  body.light-mode .metric-card,
+  body.light-mode .ml-card,
+  body.light-mode .prop-item,
+  body.light-mode .property-row,
+  body.light-mode #compInput,
+  body.light-mode .ex-chip {
+    background: #ffffff;
+  }
+  body.light-mode .card-header {
+    background: #f8fafc;
+  }
+  body.light-mode .property-row {
+    border-bottom-color: rgba(15,23,42,.12);
+  }
+  body.light-mode .descriptor-item,
+  body.light-mode .mechanism-tile {
+    background: #f8fafc;
+    border: 1px solid rgba(15,23,42,.08);
+  }
+  body.light-mode .bar-track,
+  body.light-mode .mini-track {
+    background: #e2e8f0;
+  }
+  body.light-mode .method-tag {
+    background: rgba(37,99,235,.12);
+    color: #1d4ed8;
+  }
+  body.light-mode .method-tag.green {
+    background: rgba(5,150,105,.12);
+    color: #047857;
+  }
+  body.light-mode .method-tag.gold {
+    background: rgba(217,119,6,.14);
+    color: #b45309;
+  }
+  body.light-mode .ml-card-title,
+  body.light-mode .metric-value,
+  body.light-mode .control-value,
+  body.light-mode .property-row strong,
+  body.light-mode .descriptor-name,
+  body.light-mode .descriptor-value,
+  body.light-mode .breakdown-row strong {
+    color: var(--text);
+  }
+  body.light-mode .prop-key,
+  body.light-mode .metric-label {
+    color: var(--muted);
+  }
   @media (max-width: 900px) {
     .metric-grid, .ml-panels { grid-template-columns: 1fr; }
     .ml-card.full { grid-column: auto; }
@@ -578,6 +807,10 @@
 <header>
   <div class="logo">Quantum<span>Chem</span></div>
   <span class="badge">ML Analysis</span>
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode" aria-pressed="false">
+    <span class="theme-toggle-icon" aria-hidden="true"></span>
+    <span id="themeToggleText">Light mode</span>
+  </button>
 </header>
 
 <main>
@@ -627,12 +860,82 @@ const ATOM_COLORS = {
 };
 function atomColor(sym) { return ATOM_COLORS[sym] || ATOM_COLORS.DEFAULT; }
 
+// ── Molecule loader helpers ───────────────────────────────────────────────────
+function buildMolLoader() {
+  return `<div class="mol-loader">
+    <div class="mol-scene">
+      <div class="mol-ring mol-ring-1"></div>
+      <div class="mol-ring mol-ring-2"></div>
+      <div class="mol-ring mol-ring-3"></div>
+      <svg class="mol-hex" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="35,4 62,19.5 62,50.5 35,66 8,50.5 8,19.5"
+          stroke="rgba(79,156,249,0.25)" stroke-width="1.5" stroke-dasharray="6 4" fill="none"/>
+        <polygon points="35,12 55,23.5 55,46.5 35,58 15,46.5 15,23.5"
+          stroke="rgba(52,211,153,0.15)" stroke-width="1" fill="none"/>
+      </svg>
+      <div class="mol-nucleus"></div>
+      <div class="mol-atom mol-a-c mol-o1"></div>
+      <div class="mol-atom mol-a-n mol-o1b"></div>
+      <div class="mol-atom mol-a-o mol-o1c"></div>
+      <div class="mol-atom mol-a-h mol-o2"></div>
+      <div class="mol-atom mol-a-s mol-o2b"></div>
+    </div>
+    <div class="mol-text">
+      <div class="mol-label">Analyzing compound</div>
+      <div class="mol-phrase" id="molPhrase">Querying PubChem database…</div>
+    </div>
+  </div>`;
+}
+const _molPhrases = [
+  'Querying PubChem database…',
+  'Parsing molecular formula…',
+  'Fetching OQMD entries…',
+  'Computing descriptor profile…',
+  'Estimating band gap & dipole…',
+  'Predicting electrochemical properties…',
+  'Building molecular diagram…',
+  'Running formula-based ML model…',
+  'Calculating bond topology…',
+  'Resolving IUPAC name…',
+];
+let _molPhraseTimer = null;
+function startMolLoaderCycle() {
+  if (_molPhraseTimer) { clearTimeout(_molPhraseTimer); _molPhraseTimer = null; }
+  let i = 0;
+  function tick() {
+    const el = document.getElementById('molPhrase');
+    if (!el) { _molPhraseTimer = null; return; }
+    i = (i + 1) % _molPhrases.length;
+    el.style.opacity = '0';
+    el.style.transition = 'opacity .3s';
+    setTimeout(() => {
+      const el2 = document.getElementById('molPhrase');
+      if (!el2) return;
+      el2.textContent = _molPhrases[i];
+      el2.style.opacity = '1';
+    }, 320);
+    _molPhraseTimer = setTimeout(tick, 2200);
+  }
+  _molPhraseTimer = setTimeout(tick, 2200);
+}
+
 // ── Status helper ─────────────────────────────────────────────────────────────
+let _statusTimer = null;
 function setStatus(msg, type='info', html=false) {
   const el = document.getElementById('statusMsg');
+  // Clear any previous auto-dismiss timer
+  if (_statusTimer) { clearTimeout(_statusTimer); _statusTimer = null; }
+  el.classList.remove('hiding');
   if (html) { el.innerHTML = msg; } else { el.textContent = msg; }
   el.className = type;
   el.style.display = msg ? 'block' : 'none';
+  // Auto-dismiss success toasts after 3 seconds
+  if (msg && type === 'ok') {
+    _statusTimer = setTimeout(() => {
+      el.classList.add('hiding');
+      setTimeout(() => { el.style.display = 'none'; el.classList.remove('hiding'); }, 420);
+    }, 3000);
+  }
 }
 
 // ── Cache bar ─────────────────────────────────────────────────────────────────
@@ -669,7 +972,8 @@ async function analyze() {
   // Show spinner in results area
   document.getElementById('placeholderMsg')?.remove();
   const grid = document.getElementById('resultsGrid');
-  grid.innerHTML = '<div class="placeholder-msg"><div class="spinner"></div><div style="margin-top:16px;font-size:13px;color:var(--muted)">Querying AI — this may take 5–15 seconds…</div></div>';
+  grid.innerHTML = buildMolLoader();
+  startMolLoaderCycle();
 
   try {
     // ── 1. Fetch component metadata ──
@@ -856,7 +1160,7 @@ function buildMlDashboard(d, inputName) {
       <div class="ml-card"><div class="ml-card-title">Electrochemical Performance</div><div class="chart-box" id="radarChart"></div></div>
       <div class="ml-card"><div class="ml-card-title">Cycling Stability Curve</div><div class="chart-box" id="cyclingChart"></div></div>
       <div class="ml-card"><div class="ml-card-title">Density of States (DOS)</div><div class="chart-box" id="dosChart"></div></div>
-      <div class="ml-card"><div class="ml-card-title">Band Gap Tuning</div><div class="prop-key" style="font-size:13px;margin-bottom:12px">Defect concentration effect on Eg</div>${buildBandRows(model)}<div style="color:#c8c8c8;font-size:12px;margin-top:10px">${escHtml(bandGapInterpretation(model))}</div></div>
+      <div class="ml-card"><div class="ml-card-title">Band Gap Tuning</div><div class="prop-key" style="font-size:13px;margin-bottom:12px">Defect concentration effect on Eg</div>${buildBandRows(model)}<div style="color:var(--muted);font-size:12px;margin-top:10px">${escHtml(bandGapInterpretation(model))}</div></div>
       <div class="ml-card"><div class="ml-card-title">Molecular Properties</div>${buildMolecularPropertyTable(d, model)}</div>
       <div class="ml-card"><div class="ml-card-title">Molecular Property Descriptors <span class="src-tag src-api" style="float:right">Formula model</span></div>${buildPropertyDescriptors(d, model)}</div>
       <div class="ml-card"><div class="ml-card-title">Electrochemical Performance Breakdown</div>${buildElectrochemicalBreakdown(d, model)}</div>
@@ -1151,8 +1455,8 @@ function renderRadarChart(el, m) {
   const point = (i, v) => { const a = -Math.PI / 2 + i * Math.PI * 2 / labels.length; return [cx + Math.cos(a) * r * v / 100, cy + Math.sin(a) * r * v / 100]; };
   const poly = arr => arr.map((v,i) => point(i,v).map(n=>n.toFixed(1)).join(',')).join(' ');
   let rings = '';
-  for (let p = 20; p <= 100; p += 20) rings += `<polygon points="${poly(labels.map(()=>p))}" fill="none" stroke="rgba(15,23,42,.12)"/>`;
-  const axes = labels.map((label,i) => { const [x,y] = point(i,100); const [tx,ty] = point(i,120); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(15,23,42,.12)"/><text x="${tx}" y="${ty}" fill="#64748b" font-size="10" text-anchor="middle">${label}</text>`; }).join('');
+  for (let p = 20; p <= 100; p += 20) rings += `<polygon points="${poly(labels.map(()=>p))}" fill="none" stroke="rgba(255,255,255,.08)"/>`;
+  const axes = labels.map((label,i) => { const [x,y] = point(i,100); const [tx,ty] = point(i,120); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.08)"/><text x="${tx}" y="${ty}" fill="#aaa" font-size="10" text-anchor="middle">${label}</text>`; }).join('');
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Electrochemical performance radar chart">${rings}${axes}<polygon points="${poly(base)}" fill="rgba(239,107,58,.18)" stroke="#ef6b3a" stroke-width="1.5" stroke-dasharray="4 3"/><polygon points="${poly(vals)}" fill="rgba(59,130,246,.2)" stroke="#3b82f6" stroke-width="2"/>${vals.map((v,i)=>{ const [x,y]=point(i,v); return `<circle cx="${x}" cy="${y}" r="3" fill="#3b82f6"/>`; }).join('')}</svg>`;
 }
 
@@ -1164,7 +1468,7 @@ function renderCyclingChart(el, m) {
   const y = v => T + (100 - v) * (H - T - B) / 20;
   const path = vals.map((v,i)=>`${i?'L':'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const fill = `${path} L${x(vals.length-1)},${H-B} L${L},${H-B} Z`;
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cycling stability curve">${gridLines(W,H,L,T,R,B)}<path d="${fill}" fill="rgba(16,185,129,.18)"/><path d="${path}" fill="none" stroke="#10b981" stroke-width="2"/>${cycles.map((c,i)=>`<text x="${x(i)}" y="${H-10}" fill="#64748b" font-size="10" text-anchor="middle">${c}</text>`).join('')}${[80,85,90,95,100].map(v=>`<text x="4" y="${y(v)+3}" fill="#64748b" font-size="10">${v}%</text>`).join('')}<text x="${W/2}" y="${H-1}" fill="#64748b" font-size="10" text-anchor="middle">Cycle number</text></svg>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cycling stability curve">${gridLines(W,H,L,T,R,B)}<path d="${fill}" fill="rgba(16,185,129,.18)"/><path d="${path}" fill="none" stroke="#10b981" stroke-width="2"/>${cycles.map((c,i)=>`<text x="${x(i)}" y="${H-10}" fill="#999" font-size="10" text-anchor="middle">${c}</text>`).join('')}${[80,85,90,95,100].map(v=>`<text x="4" y="${y(v)+3}" fill="#999" font-size="10">${v}%</text>`).join('')}<text x="${W/2}" y="${H-1}" fill="#999" font-size="10" text-anchor="middle">Cycle number</text></svg>`;
 }
 
 function renderDosChart(el, m) {
@@ -1190,43 +1494,53 @@ function renderDosChart(el, m) {
   const unoccupiedHeight = readNumber(dos.unoccupied_height, .76);
   const occupiedBumps = [[occupiedCenter - occupiedWidth * 1.2, occupiedHeight * .34, .16], [occupiedCenter + occupiedWidth * .9, occupiedHeight * .28, .18]];
   const unoccupiedBumps = [[unoccupiedCenter + unoccupiedWidth * .8, unoccupiedHeight * .32, .2]];
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Density of states chart">${gridLines(W,H,L,T,R,B)}<path d="${curve(occupiedCenter,occupiedHeight,occupiedWidth,occupiedBumps)}" fill="none" stroke="#2f7dd1" stroke-width="2"/><path d="${curve(unoccupiedCenter,unoccupiedHeight,unoccupiedWidth,unoccupiedBumps)}" fill="none" stroke="#ef6b3a" stroke-width="2"/>${[-5,-3,-1,1,3,5,7,9].map(e=>`<text x="${xMap(e)}" y="${H-10}" fill="#64748b" font-size="10" text-anchor="middle">${e.toFixed(1)}</text>`).join('')}<text x="${W/2}" y="${H-1}" fill="#64748b" font-size="10" text-anchor="middle">Energy (eV)</text><text transform="translate(12 ${H/2}) rotate(-90)" fill="#64748b" font-size="10" text-anchor="middle">DOS (arb.)</text></svg>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Density of states chart">${gridLines(W,H,L,T,R,B)}<path d="${curve(occupiedCenter,occupiedHeight,occupiedWidth,occupiedBumps)}" fill="none" stroke="#2f7dd1" stroke-width="2"/><path d="${curve(unoccupiedCenter,unoccupiedHeight,unoccupiedWidth,unoccupiedBumps)}" fill="none" stroke="#ef6b3a" stroke-width="2"/>${[-5,-3,-1,1,3,5,7,9].map(e=>`<text x="${xMap(e)}" y="${H-10}" fill="#999" font-size="10" text-anchor="middle">${e.toFixed(1)}</text>`).join('')}<text x="${W/2}" y="${H-1}" fill="#999" font-size="10" text-anchor="middle">Energy (eV)</text><text transform="translate(12 ${H/2}) rotate(-90)" fill="#999" font-size="10" text-anchor="middle">DOS (arb.)</text></svg>`;
 }
 
 function renderDefectMap(el, m) {
-  const W = 760, H = 320, L = 78, T = 44, R = 82, B = 88;
+  const W = 760, H = 320, L = 74, T = 36, R = 74, B = 112;
   const xs = Array.from({length: 11}, (_, i) => i);
   const x = p => L + p * (W - L - R) / 10;
-  const capVals = xs.map(p => m.capacitance - p * 3.2);
-  const energyVals = xs.map(p => m.energyDensity - p * .18);
-  const egVals = xs.map(p => m.bandGap + .08 - p * .028);
-  const padRange = (vals, pad) => [Math.min(...vals) - pad, Math.max(...vals) + pad];
-  const [capMin, capMax] = padRange(capVals, 8);
-  const [energyMin, energyMax] = padRange(energyVals, 1);
-  const [egMin, egMax] = padRange(egVals, .08);
-  const yScale = (v, min, max) => T + (max - v) * (H - T - B) / ((max - min) || 1);
+  const capValues = xs.map(p => m.capacitance - p * 3.2);
+  const energyValues = xs.map(p => m.energyDensity - p * .18);
+  const leftValues = [...capValues, ...energyValues].filter(Number.isFinite);
+  const leftMinRaw = Math.min(...leftValues);
+  const leftMaxRaw = Math.max(...leftValues);
+  const leftPad = Math.max((leftMaxRaw - leftMinRaw) * .12, 12);
+  const leftMin = Math.max(0, Math.floor((leftMinRaw - leftPad) / 10) * 10);
+  const leftMax = Math.ceil((leftMaxRaw + leftPad) / 10) * 10;
+  const yLeft = v => T + (leftMax - v) * (H - T - B) / Math.max(1, leftMax - leftMin);
+  const bandValues = xs.map(p => m.bandGap + .08 - p * .028);
+  const bandMinRaw = Math.min(...bandValues);
+  const bandMaxRaw = Math.max(...bandValues);
+  const bandPad = Math.max((bandMaxRaw - bandMinRaw) * .18, .08);
+  const bandMin = Math.max(0, Math.floor((bandMinRaw - bandPad) * 10) / 10);
+  const bandMax = Math.ceil((bandMaxRaw + bandPad) * 10) / 10;
+  const yRight = v => T + (bandMax - v) * (H - T - B) / Math.max(.1, bandMax - bandMin);
   const path = pts => pts.map((p,i)=>`${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-  const cap = xs.map((p, i) => [x(p), yScale(capVals[i], capMin, capMax)]);
-  const eg = xs.map((p, i) => [x(p), yScale(egVals[i], egMin, egMax)]);
-  const energy = xs.map((p, i) => [x(p), yScale(energyVals[i], energyMin, energyMax)]);
+  const cap = xs.map((p, i) => [x(p), yLeft(capValues[i])]);
+  const eg = xs.map((p, i) => [x(p), yRight(bandValues[i])]);
+  const energy = xs.map((p, i) => [x(p), yLeft(energyValues[i])]);
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Defect concentration property map comparing capacitance, energy density, and band gap">
     ${gridLines(W,H,L,T,R,B)}
-    <text x="${L}" y="22" fill="#64748b" font-size="10">Left Y: scaled capacitance (F/g) + energy density (Wh/kg)</text>
+    <text x="${L}" y="18" fill="#9ca3af" font-size="10">Left Y: capacitance (F/g) + energy density (Wh/kg)</text>
     <text x="${W-R}" y="18" fill="#ef6b3a" font-size="10" text-anchor="end">Right Y: band gap (eV)</text>
-    <path d="${path(cap)}" fill="none" stroke="#3b82f6" stroke-width="2"/>
-    <path d="${path(eg)}" fill="none" stroke="#ef6b3a" stroke-width="2" stroke-dasharray="5 4"/>
-    <path d="${path(energy)}" fill="none" stroke="#10b981" stroke-width="2"/>
-    ${xs.map(p=>`<text x="${x(p)}" y="${H-B+20}" fill="#64748b" font-size="10" text-anchor="middle">${p.toFixed(1)}%</text>`).join('')}
-    <g transform="translate(${L} ${H-42})">
-      <circle cx="0" cy="0" r="4" fill="#3b82f6"/><text x="9" y="4" fill="#64748b" font-size="10">Specific capacitance</text>
-      <circle cx="140" cy="0" r="4" fill="#10b981"/><text x="149" y="4" fill="#64748b" font-size="10">Energy density</text>
-      <line x1="282" y1="0" x2="300" y2="0" stroke="#ef6b3a" stroke-width="2" stroke-dasharray="5 4"/><text x="307" y="4" fill="#64748b" font-size="10">Band gap</text>
+    <g transform="translate(${L} ${H-58})">
+      <circle cx="0" cy="0" r="4" fill="#3b82f6"/><text x="9" y="4" fill="#9ca3af" font-size="10">Specific capacitance</text>
+      <circle cx="130" cy="0" r="4" fill="#10b981"/><text x="139" y="4" fill="#9ca3af" font-size="10">Energy density</text>
+      <line x1="260" y1="0" x2="278" y2="0" stroke="#ef6b3a" stroke-width="2" stroke-dasharray="5 4"/><text x="285" y="4" fill="#9ca3af" font-size="10">Band gap</text>
     </g>
-    <text x="${W/2}" y="${H-16}" fill="#64748b" font-size="10" text-anchor="middle">X axis: defect concentration (%)</text>
+    <path d="${path(cap)}" fill="none" stroke="#3b82f6" stroke-width="2"/>
+    <path d="${path(eg)}" fill="none" stroke="#ef6b3a" stroke-width="2.4" stroke-dasharray="6 4"/>
+    <path d="${path(energy)}" fill="none" stroke="#10b981" stroke-width="2"/>
+    ${xs.map(p=>`<text x="${x(p)}" y="${H-82}" fill="#999" font-size="10" text-anchor="middle">${p.toFixed(1)}%</text>`).join('')}
+    <text x="${W/2}" y="${H-32}" fill="#999" font-size="10" text-anchor="middle">X axis: defect concentration (%)</text>
     <text transform="translate(30 ${T + (H-T-B)/2}) rotate(-90)" fill="#9ca3af" font-size="10" text-anchor="middle">Property value</text>
     <text transform="translate(${W-25} ${T + (H-T-B)/2}) rotate(-90)" fill="#ef6b3a" font-size="10" text-anchor="middle">Band gap (eV)</text>
-    <text x="${W-24}" y="${T+4}" fill="#ef6b3a" font-size="11" font-weight="700">${egMax.toFixed(2)}</text>
-    <text x="${W-24}" y="${H-B}" fill="#ef6b3a" font-size="11" font-weight="700">${egMin.toFixed(2)}</text>
+    <text x="34" y="${T+4}" fill="#9ca3af" font-size="10" text-anchor="end">${leftMax}</text>
+    <text x="34" y="${H-B}" fill="#9ca3af" font-size="10" text-anchor="end">${leftMin}</text>
+    <text x="${W-22}" y="${T+4}" fill="#ef6b3a" font-size="11" font-weight="700">${bandMax.toFixed(1)}</text>
+    <text x="${W-22}" y="${H-B}" fill="#ef6b3a" font-size="11" font-weight="700">${bandMin.toFixed(1)}</text>
   </svg>`;
 }
 
@@ -1234,11 +1548,11 @@ function gridLines(W,H,L,T,R,B) {
   let out = '';
   for (let i = 0; i <= 4; i++) {
     const y = T + i * (H - T - B) / 4;
-    out += `<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="rgba(15,23,42,.10)"/>`;
+    out += `<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
   }
   for (let i = 0; i <= 5; i++) {
     const x = L + i * (W - L - R) / 5;
-    out += `<line x1="${x}" y1="${T}" x2="${x}" y2="${H-B}" stroke="rgba(15,23,42,.08)"/>`;
+    out += `<line x1="${x}" y1="${T}" x2="${x}" y2="${H-B}" stroke="rgba(255,255,255,.06)"/>`;
   }
   return out;
 }
@@ -1300,11 +1614,11 @@ function renderMolecule3D(atoms, bonds, note='') {
   let svgParts = [`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <defs>
       <filter id="atomShadow" x="-40%" y="-40%" width="180%" height="180%">
-        <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#64748b" flood-opacity=".28"/>
+        <feDropShadow dx="0" dy="4" stdDeviation="3" flood-color="#000" flood-opacity=".45"/>
       </filter>
       <radialGradient id="sceneGlow" cx="50%" cy="38%" r="70%">
-        <stop offset="0%" stop-color="#ffffff"/>
-        <stop offset="100%" stop-color="#eef2ff"/>
+        <stop offset="0%" stop-color="#17233c"/>
+        <stop offset="100%" stop-color="#070b14"/>
       </radialGradient>
     </defs>
     <rect width="${W}" height="${H}" rx="14" fill="url(#sceneGlow)"/>`];
@@ -1314,7 +1628,7 @@ function renderMolecule3D(atoms, bonds, note='') {
     if (!a1 || !a2) return;
     const depth = (a1.depth + a2.depth) / 2;
     const width = 4 + depth * 3 + ((b.order || 1) >= 3 ? 1.5 : 0);
-    svgParts.push(`<line x1="${a1.sx.toFixed(2)}" y1="${a1.sy.toFixed(2)}" x2="${a2.sx.toFixed(2)}" y2="${a2.sy.toFixed(2)}" stroke="#64748b" stroke-width="${width.toFixed(2)}" stroke-linecap="round" opacity="${(0.44 + depth * .34).toFixed(2)}"/>`);
+    svgParts.push(`<line x1="${a1.sx.toFixed(2)}" y1="${a1.sy.toFixed(2)}" x2="${a2.sx.toFixed(2)}" y2="${a2.sy.toFixed(2)}" stroke="#8da0b8" stroke-width="${width.toFixed(2)}" stroke-linecap="round" opacity="${(0.48 + depth * .38).toFixed(2)}"/>`);
   });
 
   projected.slice().sort((a, b) => a.depth - b.depth).forEach((a) => {
@@ -1327,12 +1641,12 @@ function renderMolecule3D(atoms, bonds, note='') {
         <radialGradient id="${gradId}" cx="34%" cy="28%" r="70%">
           <stop offset="0%" stop-color="#ffffff" stop-opacity=".9"/>
           <stop offset="32%" stop-color="${col}" stop-opacity=".95"/>
-          <stop offset="100%" stop-color="#e2e8f0"/>
+          <stop offset="100%" stop-color="#050811"/>
         </radialGradient>
       </defs>
       <circle cx="${a.sx.toFixed(2)}" cy="${a.sy.toFixed(2)}" r="${a.r.toFixed(2)}" fill="url(#${gradId})" stroke="${col}" stroke-width="1.2" filter="url(#atomShadow)"/>
       <circle cx="${(a.sx - a.r * .28).toFixed(2)}" cy="${(a.sy - a.r * .32).toFixed(2)}" r="${Math.max(2.2, a.r * .23).toFixed(2)}" fill="#fff" opacity=".45"/>
-      <text x="${a.sx.toFixed(2)}" y="${a.sy.toFixed(2)}" text-anchor="middle" dominant-baseline="central" font-family="'JetBrains Mono',monospace" font-size="${sym.length > 1 ? 9 : 10}" font-weight="800" fill="#0f172a">${escHtml(sym)}</text>
+      <text x="${a.sx.toFixed(2)}" y="${a.sy.toFixed(2)}" text-anchor="middle" dominant-baseline="central" font-family="'JetBrains Mono',monospace" font-size="${sym.length > 1 ? 9 : 10}" font-weight="800" fill="#f8fafc">${escHtml(sym)}</text>
     `);
   });
 
@@ -1439,6 +1753,19 @@ function escHtml(s) {
 }
 
 // ── Event wiring ──────────────────────────────────────────────────────────────
+function setTheme(mode) {
+  const isLight = mode === 'light';
+  document.body.classList.toggle('light-mode', isLight);
+  document.getElementById('themeToggle').setAttribute('aria-pressed', String(isLight));
+  document.getElementById('themeToggle').setAttribute('aria-label', `Switch to ${isLight ? 'dark' : 'light'} mode`);
+  document.getElementById('themeToggleText').textContent = isLight ? 'Dark mode' : 'Light mode';
+  localStorage.setItem('qc-theme', isLight ? 'light' : 'dark');
+}
+
+setTheme(localStorage.getItem('qc-theme') || 'dark');
+document.getElementById('themeToggle').addEventListener('click', () => {
+  setTheme(document.body.classList.contains('light-mode') ? 'dark' : 'light');
+});
 document.getElementById('submitBtn').addEventListener('click', analyze);
 document.getElementById('compInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') analyze();
